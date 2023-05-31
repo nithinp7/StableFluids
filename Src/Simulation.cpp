@@ -1,5 +1,8 @@
 #include "Simulation.h"
 
+#include <cassert>
+#include <cstdint>
+
 using namespace AltheaEngine;
 
 namespace StableFluids {
@@ -47,7 +50,7 @@ Simulation::Simulation(
     imageOptions.format = VK_FORMAT_R16G16B16_SFLOAT;
     imageOptions.width = extent.width;
     imageOptions.height = extent.height;
-    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     this->_divergenceField.image = Image(app, imageOptions);
 
     // TODO: Are views and samplers needed for storage-only usage?
@@ -62,11 +65,15 @@ Simulation::Simulation(
     imageOptions.format = VK_FORMAT_R16G16B16_SFLOAT;
     imageOptions.width = extent.width;
     imageOptions.height = extent.height;
-    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     this->_pressureFieldA.image = Image(app, imageOptions);
     this->_pressureFieldA.view =
         ImageView(app, this->_pressureFieldA.image, {});
     this->_pressureFieldA.sampler = Sampler(app, {});
+
+    // Only one of the ping-pong buffers needs to be capable of being sampled in
+    // the fragment shader
+    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT;
     this->_pressureFieldB.image = Image(app, imageOptions);
     this->_pressureFieldB.view =
         ImageView(app, this->_pressureFieldB.image, {});
@@ -233,4 +240,142 @@ Simulation::Simulation(
   }
 }
 
+void Simulation::update(float dt, VkCommandBuffer commandBuffer) {
+  // Advect velocity pass
+  {
+    this->_velocityField.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_advectedVelocityField.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    this->_pAdvectPass->bindPipeline(commandBuffer);
+    VkDescriptorSet material = this->_pAdvectMaterial->getVkDescriptorSet();
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        this->_pAdvectPass->getLayout(),
+        0,
+        1,
+        &material,
+        0,
+        nullptr);
+  }
+
+  // Calculate divergence pass
+  {
+    this->_advectedVelocityField.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_divergenceField.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    this->_pDivergencePass->bindPipeline(commandBuffer);
+    VkDescriptorSet material = this->_pDivergenceMaterial->getVkDescriptorSet();
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        this->_pDivergencePass->getLayout(),
+        0,
+        1,
+        &material,
+        0,
+        nullptr);
+  }
+
+  // Calculate pressure passes
+  const uint32_t CALC_PRESSURE_ITERS = 20;
+  // Must be an even number of iterations so the ping-pong buffer results end up
+  // up in a consistent place (pressureFieldA)
+  assert(CALC_PRESSURE_ITERS % 2 == 0);
+  for (uint32_t pressureIter = 0; pressureIter < CALC_PRESSURE_ITERS;
+       ++pressureIter) {
+    uint32_t phase = pressureIter % 2;
+
+    this->_divergenceField.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_pressureFieldA.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        phase ? VK_ACCESS_SHADER_WRITE_BIT : VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_pressureFieldB.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        phase ? VK_ACCESS_SHADER_READ_BIT : VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    this->_pPressurePass->bindPipeline(commandBuffer);
+    VkDescriptorSet material =
+        phase ? this->_pPressureMaterialB->getVkDescriptorSet()
+              : this->_pPressureMaterialA->getVkDescriptorSet();
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        this->_pPressurePass->getLayout(),
+        0,
+        1,
+        &material,
+        0,
+        nullptr);
+  }
+
+  // Update velocity pass
+  {
+    this->_pressureFieldA.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_velocityField.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    // Note: The advected velocity field texture has already been transitioned
+    // for reading by this point.
+
+    this->_pUpdateVelocityPass->bindPipeline(commandBuffer);
+    VkDescriptorSet material = this->_pUpdateMaterial->getVkDescriptorSet();
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        this->_pUpdateVelocityPass->getLayout(),
+        0,
+        1,
+        &material,
+        0,
+        nullptr);
+  }
+
+  // Transition resources for visualizing in fragment shader
+  this->_pressureFieldA.image.transitionLayout(
+      commandBuffer,
+      VK_IMAGE_LAYOUT_GENERAL,
+      VK_ACCESS_SHADER_READ_BIT,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+  this->_divergenceField.image.transitionLayout(
+      commandBuffer,
+      VK_IMAGE_LAYOUT_GENERAL,
+      VK_ACCESS_SHADER_READ_BIT,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+  this->_velocityField.image.transitionLayout(
+      commandBuffer,
+      VK_IMAGE_LAYOUT_GENERAL,
+      VK_ACCESS_SHADER_READ_BIT,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+}
 } // namespace StableFluids

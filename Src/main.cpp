@@ -1,15 +1,14 @@
-#include "DemoScene.h"
+#include "FluidCanvas2D.h"
 
 #include <Althea/Application.h>
 
 #include <iostream>
 
 using namespace AltheaEngine;
-using namespace AltheaDemo;
 
 int main() {
   Application app("../..", "../../Extern/Althea");
-  app.createGame<DemoScene::DemoScene>();
+  app.createGame<StableFluids::FluidCanvas2D>();
 
   try {
     app.run();
