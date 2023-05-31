@@ -56,6 +56,7 @@ void FluidCanvas2D::createRenderState(Application& app) {
 
   SingleTimeCommandBuffer commandBuffer(app);
   this->_pSimulation = std::make_unique<Simulation>(app, commandBuffer);
+  this->_createGlobalResources(app, commandBuffer);
   this->_createRenderPass(app);
 }
 
@@ -85,9 +86,11 @@ void FluidCanvas2D::_createGlobalResources(
 
     // Add texture slots for simulation data
     globalResourceLayout
-        // Add texture slot for density field
-        .addTextureBinding()
         // Add texture slot for velocity field
+        .addTextureBinding()
+        // Add texture slot for divergence field
+        .addTextureBinding()
+        // Add texture slot for pressure field
         .addTextureBinding()
         // Global uniforms
         .addUniformBufferBinding();
@@ -118,10 +121,10 @@ void FluidCanvas2D::_createRenderPass(Application& app) {
     SubpassBuilder& subpassBuilder = subpassBuilders.emplace_back();
     subpassBuilder.colorAttachments = {0};
 
-    Primitive::buildPipeline(subpassBuilder.pipelineBuilder);
-
     subpassBuilder
         .pipelineBuilder
+        // TODO: Fix the full-screen quad render
+        .setFrontFace(VK_FRONT_FACE_CLOCKWISE)
         // Vertex shader
         .addVertexShader(GProjectDirectory + "/Shaders/Fluid2D.vert")
         // Fragment shader
@@ -167,13 +170,10 @@ void FluidCanvas2D::draw(
     Application& app,
     VkCommandBuffer commandBuffer,
     const FrameContext& frame) {
+  this->_pSimulation->update(app, commandBuffer, frame.deltaTime);
 
   VkDescriptorSet globalDescriptorSet =
       this->_pGlobalResources->getCurrentDescriptorSet(frame);
-
-  // TODO: Run simulation
-
-  // TODO: Sync simulation-render resources
 
   // Render simulation
   {

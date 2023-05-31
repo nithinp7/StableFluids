@@ -1,0 +1,29 @@
+
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(set=0, binding=0, r16f) uniform readonly image2D divergenceField;
+layout(set=0, binding=1, r16f) uniform readonly image2D prevPressureField;
+layout(set=0, binding=2) uniform writeonly image2D pressureField;
+
+layout(push_constant) uniform PushConstants {
+  float width;
+  float height;
+  float dt;
+  float sorOmega;
+} pushConstants;
+
+void main() {
+  ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+  vec2 texelUv = vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
+  
+  float div = imageLoad(divergenceField, texelPos).r;
+  float prevP = imageLoad(prevPressureField, texelPos).r;
+  // TODO: Calculate pressure
+
+  imageStore(pressureField, texelPos, vec4(div, 0.0, 0.0, 1.0));
+}
+
+
+
+

@@ -5,7 +5,6 @@
 #include <Althea/DescriptorSet.h>
 #include <Althea/ImageResource.h>
 #include <Althea/SingleTimeCommandBuffer.h>
-
 #include <vulkan/vulkan.h>
 
 #include <memory>
@@ -16,7 +15,7 @@ namespace StableFluids {
 class Simulation {
 public:
   Simulation(Application& app, SingleTimeCommandBuffer& commandBuffer);
-  void update(float dt, VkCommandBuffer commandBuffer);
+  void update(const Application& app, VkCommandBuffer commandBuffer, float dt);
 
   const ImageResource& getVelocityTexture() const {
     return this->_velocityField;

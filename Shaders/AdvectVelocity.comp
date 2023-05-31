@@ -1,0 +1,27 @@
+
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(set=0, binding=0) uniform sampler2D velocityField;
+layout(set=0, binding=1) uniform writeonly image2D advectedVelocityField;
+
+layout(push_constant) uniform PushConstants {
+  float width;
+  float height;
+  float dt;
+  float sorOmega;
+} pushConstants;
+
+void main() {
+  ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+  vec2 texelUv = vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
+  
+  vec2 curVel = texture(velocityField, texelUv).rg;
+  // TODO: Implement backward Euler advection
+
+  imageStore(advectedVelocityField, texelPos, vec4(curVel, 0.0, 1.0));
+}
+
+
+
+
