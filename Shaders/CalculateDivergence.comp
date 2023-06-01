@@ -14,12 +14,21 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  vec2 texelUv = vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
   
   vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
   // TODO: Calculate local divergence
+  // TODO: Parameterize these
+  const float density = 1.0;
+  float h = 1.0 / pushConstants.width;
 
-  imageStore(divergenceField, texelPos, vec4(vel.x, 0.0, 0.0, 1.0));
+  vec2 vR = imageLoad(advectedVelocityField, texelPos + ivec2(1, 0)).rg;
+  vec2 vL = imageLoad(advectedVelocityField, texelPos + ivec2(-1, 0)).rg;
+  vec2 vU = imageLoad(advectedVelocityField, texelPos + ivec2(0, 1)).rg;
+  vec2 vD = imageLoad(advectedVelocityField, texelPos + ivec2(0, -1)).rg;
+
+  float div = -2.0 * h * density / pushConstants.dt * (vR.x - vL.x + vU.y - vD.y);
+
+  imageStore(divergenceField, texelPos, vec4(div, 0.0, 0.0, 1.0));
 }
 
 

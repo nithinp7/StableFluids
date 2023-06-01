@@ -14,12 +14,20 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  vec2 texelUv = vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
-  
-  vec2 curVel = texture(velocityField, texelUv).rg;
-  // TODO: Implement backward Euler advection
+  vec2 texelUv = (vec2(texelPos) + vec2(0.5)) / vec2(pushConstants.width, pushConstants.height);
 
-  imageStore(advectedVelocityField, texelPos, vec4(curVel, 0.0, 1.0));
+  // TODO: Introduce temperature and buoyancy
+  // 
+  vec2 vel = texture(velocityField, texelUv).rg;
+  vec2 srcUv = texelUv - vel * pushConstants.dt;
+  vec2 srcVel = texture(velocityField, srcUv).rg;
+
+  // For testing...
+  if (srcUv.x <= 0.001 && srcUv.y > 0.45 && srcUv.y < 0.55) {
+    srcVel = vec2(0.5, 0.0);
+  }
+
+  imageStore(advectedVelocityField, texelPos, vec4(srcVel, 0.0, 1.0));
 }
 
 

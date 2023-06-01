@@ -15,13 +15,18 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  vec2 texelUv = vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
   
   float div = imageLoad(divergenceField, texelPos).r;
-  float prevP = imageLoad(prevPressureField, texelPos).r;
-  // TODO: Calculate pressure
+  float p = imageLoad(prevPressureField, texelPos).r;
+  float pR = imageLoad(prevPressureField, texelPos + ivec2(2, 0)).r;
+  float pL = imageLoad(prevPressureField, texelPos + ivec2(-2, 0)).r;
+  float pU = imageLoad(prevPressureField, texelPos + ivec2(0, 2)).r;
+  float pD = imageLoad(prevPressureField, texelPos + ivec2(0, -2)).r;
 
-  imageStore(pressureField, texelPos, vec4(div, 0.0, 0.0, 1.0));
+  // Update pressure
+  p = mix(p, 0.25 * (div + pR + pL + pU + pD), pushConstants.sorOmega); 
+
+  imageStore(pressureField, texelPos, vec4(p, 0.0, 0.0, 1.0));
 }
 
 

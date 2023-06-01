@@ -367,7 +367,7 @@ void Simulation::update(
         VK_ACCESS_SHADER_READ_BIT,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-    const uint32_t CALC_PRESSURE_ITERS = 20;
+    const uint32_t CALC_PRESSURE_ITERS = 40;
     // Must be an even number of iterations so the ping-pong buffer results end
     // up up in a consistent place (pressureFieldA)
     assert(CALC_PRESSURE_ITERS % 2 == 0);

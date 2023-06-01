@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 
 project(
-    AltheaDemo
+    StableFluids
     VERSION 0.1.0
     LANGUAGES CXX C)
 
@@ -26,7 +26,7 @@ function(glob_files out_var_name regexes)
 endfunction()
 
 glob_files(SRC_FILES_LIST Src/*.cpp)
-add_executable(AltheaDemo ${SRC_FILES_LIST})
+add_executable(StableFluids ${SRC_FILES_LIST})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE MAX_UV_COORDS=4)
 

@@ -13,11 +13,14 @@ layout(set=0, binding=3) uniform UniformBufferObject {
 } globals;
 
 void main() {
-  // vec2 vel = texture(velocityField, screenUV).rg;
-  color = vec4(1.0, 0.0, 0.0, 1.0);//vec4(0.5 * normalize(vel) + vec2(0.5), 0.0, 1.0);
+  vec2 vel = texture(velocityField, screenUV).rg;
+  // color = vec4(1.0, 0.0, 0.0, 1.0);//
+  color = vec4(abs(vel), 0.0, 1.0);
+  //vec4(0.5 * normalize(vel) + vec2(0.5), 0.0, 1.0);
 
 #ifndef SKIP_TONEMAP
   // TODO: Tone-map??
-  // color.rgb = vec3(1.0) - exp(-color.rgb * globals.exposure);
+  const float exposure = 0.5;
+  color.rgb = vec3(1.0) - exp(-color.rgb * exposure);
 #endif
 }
