@@ -11,6 +11,8 @@ layout(push_constant) uniform PushConstants {
   float height;
   float dt;
   float sorOmega;
+  float density;
+  float vorticity;
 } pushConstants;
 
 void main() {
@@ -19,7 +21,6 @@ void main() {
   // Project velocity field to be divergence free
 
   // TODO: Parameterize these
-  const float density = 1.0;
   float h = 1.0 / pushConstants.width;
 
   vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
@@ -28,7 +29,7 @@ void main() {
   float pU = imageLoad(pressureField, texelPos + ivec2(0, 1)).r;
   float pD = imageLoad(pressureField, texelPos + ivec2(0, -1)).r;
 
-  vel -= vec2(pR - pL, pU - pD) * pushConstants.dt / (2.0 * density * h);
+  vel -= vec2(pR - pL, pU - pD) * pushConstants.dt / (2.0 * pushConstants.density * h);
 
   imageStore(velocityField, texelPos, vec4(vel, 0.0, 1.0));
 }

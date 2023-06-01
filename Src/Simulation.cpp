@@ -11,6 +11,8 @@ struct SimulationConstants {
   float height;
   float dt;
   float sorOmega;
+  float density;
+  float vorticity;
 };
 } // namespace
 
@@ -278,6 +280,8 @@ void Simulation::update(
   constants.height = static_cast<float>(extent.height);
   constants.dt = dt;
   constants.sorOmega = 1.0f;
+  constants.density = 0.5f;
+  constants.vorticity = 0.5f;
 
   uint32_t groupCountX = extent.width / 16;
   uint32_t groupCountY = extent.height / 16;

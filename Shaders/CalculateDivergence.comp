@@ -10,6 +10,8 @@ layout(push_constant) uniform PushConstants {
   float height;
   float dt;
   float sorOmega;
+  float density;
+  float vorticity;
 } pushConstants;
 
 void main() {
@@ -18,7 +20,6 @@ void main() {
   vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
   // TODO: Calculate local divergence
   // TODO: Parameterize these
-  const float density = 1.0;
   float h = 1.0 / pushConstants.width;
 
   vec2 vR = imageLoad(advectedVelocityField, texelPos + ivec2(1, 0)).rg;
@@ -26,7 +27,7 @@ void main() {
   vec2 vU = imageLoad(advectedVelocityField, texelPos + ivec2(0, 1)).rg;
   vec2 vD = imageLoad(advectedVelocityField, texelPos + ivec2(0, -1)).rg;
 
-  float div = -2.0 * h * density / pushConstants.dt * (vR.x - vL.x + vU.y - vD.y);
+  float div = -2.0 * h * pushConstants.density / pushConstants.dt * (vR.x - vL.x + vU.y - vD.y);
 
   imageStore(divergenceField, texelPos, vec4(div, 0.0, 0.0, 1.0));
 }

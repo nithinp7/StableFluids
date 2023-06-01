@@ -11,6 +11,8 @@ layout(push_constant) uniform PushConstants {
   float height;
   float dt;
   float sorOmega;
+  float density;
+  float vorticity;
 } pushConstants;
 
 void main() {

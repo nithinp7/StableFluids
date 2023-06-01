@@ -10,11 +10,14 @@ layout(push_constant) uniform PushConstants {
   float height;
   float dt;
   float sorOmega;
+  float density;
+  float vorticity;
 } pushConstants;
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  vec2 texelUv = (vec2(texelPos) + vec2(0.5)) / vec2(pushConstants.width, pushConstants.height);
+  vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  vec2 texelUv = 0.5 * cellDims + vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
 
   // TODO: Introduce temperature and buoyancy
   // 
@@ -27,7 +30,31 @@ void main() {
     srcVel = vec2(0.5, 0.0);
   }
 
-  imageStore(advectedVelocityField, texelPos, vec4(srcVel, 0.0, 1.0));
+  // Velocities diagonal to the current cell, used multiple
+  // times by the curl computation
+  vec2 velLD = texture(velocityField, texelUv - cellDims).rg;
+  vec2 velRD = texture(velocityField, texelUv + vec2(cellDims.x, -cellDims.y)).rg;
+  vec2 velRU = texture(velocityField, texelUv + cellDims).rg;
+  vec2 velLU = texture(velocityField, texelUv + vec2(-cellDims.x, cellDims.y)).rg;
+
+  vec2 velLL = texture(velocityField, texelUv + vec2(-2.0 * cellDims.x, 0.0)).rg;
+  vec2 velRR = texture(velocityField, texelUv + vec2(2.0 * cellDims.x, 0.0)).rg;
+  vec2 velDD = texture(velocityField, texelUv + vec2(0.0, -2.0 * cellDims.y)).rg;
+  vec2 velUU = texture(velocityField, texelUv + vec2(0.0, 2.0 * cellDims.y)).rg;
+
+  // TODO: Verify curl orientation (right vs left handed)
+  float curlL = velLU.x - velLD.x + velLL.y - vel.y;
+  float curlR = velRU.x - velRD.x + vel.y - velRR.y;
+  float curlD = vel.x - velDD.x + velLD.y - velRD.y;
+  float curlU = velUU.x - vel.x + velLU.y - velRU.y;
+
+  vec2 vortConf = vec2(curlD - curlU, curlR - curlL);
+  float vortConfMag = length(vortConf);
+  if (vortConfMag > 0.00001) {
+    vortConf *= cellDims * pushConstants.vorticity / vortConfMag;
+  }
+
+  imageStore(advectedVelocityField, texelPos, vec4(srcVel + vortConf, 0.0, 1.0));
 }
 
 
