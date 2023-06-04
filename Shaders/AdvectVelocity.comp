@@ -15,6 +15,20 @@ layout(push_constant) uniform PushConstants {
   bool clear;
 } pushConstants;
 
+vec2 sampleVel(vec2 uv) {
+  vec2 v = texture(velocityField, uv).rg;
+  vec2 sn = vec2(1.0);
+  if (uv.x < 0 || uv.x > 1.0) {
+    sn.x *= -1.0;
+  }
+
+  if (uv.y < 0 || uv.y > 1.0) {
+    sn.y *= -1.0;
+  }
+
+  return sn * v;
+}
+
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
   if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
@@ -38,15 +52,15 @@ void main() {
 
   // Velocities diagonal to the current cell, used multiple
   // times by the curl computation
-  vec2 velLD = texture(velocityField, texelUv - cellDims).rg;
-  vec2 velRD = texture(velocityField, texelUv + vec2(cellDims.x, -cellDims.y)).rg;
-  vec2 velRU = texture(velocityField, texelUv + cellDims).rg;
-  vec2 velLU = texture(velocityField, texelUv + vec2(-cellDims.x, cellDims.y)).rg;
+  vec2 velLD = sampleVel(texelUv - cellDims);
+  vec2 velRD = sampleVel(texelUv + vec2(cellDims.x, -cellDims.y));
+  vec2 velRU = sampleVel(texelUv + cellDims);
+  vec2 velLU = sampleVel(texelUv + vec2(-cellDims.x, cellDims.y));
 
-  vec2 velLL = texture(velocityField, texelUv + vec2(-2.0 * cellDims.x, 0.0)).rg;
-  vec2 velRR = texture(velocityField, texelUv + vec2(2.0 * cellDims.x, 0.0)).rg;
-  vec2 velDD = texture(velocityField, texelUv + vec2(0.0, -2.0 * cellDims.y)).rg;
-  vec2 velUU = texture(velocityField, texelUv + vec2(0.0, 2.0 * cellDims.y)).rg;
+  vec2 velLL = sampleVel(texelUv + vec2(-2.0 * cellDims.x, 0.0));
+  vec2 velRR = sampleVel(texelUv + vec2(2.0 * cellDims.x, 0.0));
+  vec2 velDD = sampleVel(texelUv + vec2(0.0, -2.0 * cellDims.y));
+  vec2 velUU = sampleVel(texelUv + vec2(0.0, 2.0 * cellDims.y));
 
   // TODO: Verify curl orientation (right vs left handed)
   float curlL = velLU.x - velLD.x + velLL.y - vel.y;

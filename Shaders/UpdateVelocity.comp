@@ -16,6 +16,11 @@ layout(push_constant) uniform PushConstants {
   bool clear;
 } pushConstants;
 
+float loadP(ivec2 pos) {
+  pos = clamp(pos, ivec2(0), ivec2(pushConstants.width, pushConstants.height));
+  return imageLoad(pressureField, pos).r;
+}
+
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
   if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
@@ -25,14 +30,13 @@ void main() {
   
   // Project velocity field to be divergence free
 
-  // TODO: Parameterize these
   vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
 
   vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
-  float pR = imageLoad(pressureField, texelPos + ivec2(1, 0)).r;
-  float pL = imageLoad(pressureField, texelPos + ivec2(-1, 0)).r;
-  float pU = imageLoad(pressureField, texelPos + ivec2(0, 1)).r;
-  float pD = imageLoad(pressureField, texelPos + ivec2(0, -1)).r;
+  float pR = loadP(texelPos + ivec2(1, 0));
+  float pL = loadP(texelPos + ivec2(-1, 0));
+  float pU = loadP(texelPos + ivec2(0, 1));
+  float pD = loadP(texelPos + ivec2(0, -1));
 
   vel -= vec2(pR - pL, pU - pD) * pushConstants.dt / (2.0 * pushConstants.density * cellDims);
 

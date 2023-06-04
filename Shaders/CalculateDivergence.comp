@@ -15,6 +15,11 @@ layout(push_constant) uniform PushConstants {
   bool clear;
 } pushConstants;
 
+vec2 loadVel(ivec2 pos) {
+  pos = clamp(pos, ivec2(0), ivec2(pushConstants.width, pushConstants.height));
+  return imageLoad(advectedVelocityField, pos).rg;
+}
+
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
   if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
@@ -24,12 +29,12 @@ void main() {
 
   vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
   
-  // Calculate local divergence
-  vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
-  vec2 vR = imageLoad(advectedVelocityField, texelPos + ivec2(1, 0)).rg;
-  vec2 vL = imageLoad(advectedVelocityField, texelPos + ivec2(-1, 0)).rg;
-  vec2 vU = imageLoad(advectedVelocityField, texelPos + ivec2(0, 1)).rg;
-  vec2 vD = imageLoad(advectedVelocityField, texelPos + ivec2(0, -1)).rg;
+  // Calculate local divergence  
+  vec2 vel = loadVel(texelPos);
+  vec2 vR = loadVel(texelPos + ivec2(1, 0));
+  vec2 vL = loadVel(texelPos + ivec2(-1, 0));
+  vec2 vU = loadVel(texelPos + ivec2(0, 1));
+  vec2 vD = loadVel(texelPos + ivec2(0, -1));
 
   float div = 
       -2.0 * pushConstants.density / pushConstants.dt * 

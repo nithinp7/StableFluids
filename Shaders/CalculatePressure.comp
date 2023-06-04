@@ -16,6 +16,22 @@ layout(push_constant) uniform PushConstants {
   bool clear;
 } pushConstants;
 
+float loadP(ivec2 pos) {
+  pos.x = 
+      (pos.x < pushConstants.width) ? 
+        (pos.x < 0) ? 
+          abs(pos.x) - 1 : 
+          pos.x : 
+        (2 * pushConstants.width - pos.x - 1);
+  pos.y = 
+      (pos.y < pushConstants.height) ? 
+        (pos.y < 0) ? 
+          abs(pos.y) - 1 : 
+          pos.y : 
+        (2 * pushConstants.height - pos.y - 1);
+  return imageLoad(prevPressureField, pos).r;  
+}
+
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
   if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
@@ -24,11 +40,11 @@ void main() {
   }
   
   float div = imageLoad(divergenceField, texelPos).r;
-  float p = imageLoad(prevPressureField, texelPos).r;
-  float pR = imageLoad(prevPressureField, texelPos + ivec2(2, 0)).r;
-  float pL = imageLoad(prevPressureField, texelPos + ivec2(-2, 0)).r;
-  float pU = imageLoad(prevPressureField, texelPos + ivec2(0, 2)).r;
-  float pD = imageLoad(prevPressureField, texelPos + ivec2(0, -2)).r;
+  float p = loadP(texelPos);
+  float pR = loadP(texelPos + ivec2(2, 0));
+  float pL = loadP(texelPos + ivec2(-2, 0));
+  float pU = loadP(texelPos + ivec2(0, 2));
+  float pD = loadP(texelPos + ivec2(0, -2));
 
   // Update pressure
   p = (1.0 - pushConstants.sorOmega) * p + pushConstants.sorOmega * 0.25 * (div + pR + pL + pU + pD);

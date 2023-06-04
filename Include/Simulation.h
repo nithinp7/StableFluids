@@ -31,7 +31,8 @@ public:
 
 private:
   bool _clear = true;
-  
+  bool _stutter = false;
+
   // Velocity advection pass
   ImageResource _velocityField{};
   ImageResource _advectedVelocityField{};

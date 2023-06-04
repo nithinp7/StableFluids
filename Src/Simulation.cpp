@@ -22,6 +22,10 @@ namespace StableFluids {
 Simulation::Simulation(
     Application& app,
     SingleTimeCommandBuffer& commandBuffer) {
+  app.getInputManager().addMouseBinding({GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, 0}, [this](){
+    this->_stutter = true;
+  });
+  
   const VkExtent2D& extent = app.getSwapChainExtent();
 
   // Create texture resources
@@ -42,7 +46,11 @@ Simulation::Simulation(
     ImageViewOptions viewOptions{};
     viewOptions.format = VK_FORMAT_R16G16_SFLOAT;
     this->_velocityField.view = ImageView(app, this->_velocityField.image, viewOptions);
-    this->_velocityField.sampler = Sampler(app, {});
+
+    SamplerOptions samplerOptions{};
+    samplerOptions.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    samplerOptions.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    this->_velocityField.sampler = Sampler(app, samplerOptions);
   }
 
   // Advected velocity field texture
@@ -279,13 +287,14 @@ void Simulation::update(
   SimulationConstants constants{};
   constants.width = static_cast<int>(extent.width);
   constants.height = static_cast<int>(extent.height);
-  constants.dt = dt;
+  constants.dt = this->_stutter ? 2.0f : dt;
   constants.sorOmega = 1.f;
   constants.density = 0.5f;
   constants.vorticity = 0.5f;
   constants.clear = this->_clear;
 
   this->_clear = false;
+  this->_stutter = false;
 
   uint32_t groupCountX = (extent.width - 1) / 16 + 1;
   uint32_t groupCountY = (extent.height - 1) / 16 + 1;
