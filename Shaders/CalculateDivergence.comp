@@ -6,28 +6,38 @@ layout(set=0, binding=0, rg16f) uniform readonly image2D advectedVelocityField;
 layout(set=0, binding=1) uniform writeonly image2D divergenceField;
 
 layout(push_constant) uniform PushConstants {
-  float width;
-  float height;
+  int width;
+  int height;
   float dt;
   float sorOmega;
   float density;
   float vorticity;
+  bool clear;
 } pushConstants;
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  
-  vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
-  // TODO: Calculate local divergence
-  // TODO: Parameterize these
-  float h = 1.0 / pushConstants.width;
+  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
+      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+    return;
+  }
 
+  vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  
+  // Calculate local divergence
+  vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
   vec2 vR = imageLoad(advectedVelocityField, texelPos + ivec2(1, 0)).rg;
   vec2 vL = imageLoad(advectedVelocityField, texelPos + ivec2(-1, 0)).rg;
   vec2 vU = imageLoad(advectedVelocityField, texelPos + ivec2(0, 1)).rg;
   vec2 vD = imageLoad(advectedVelocityField, texelPos + ivec2(0, -1)).rg;
 
-  float div = -2.0 * h * pushConstants.density / pushConstants.dt * (vR.x - vL.x + vU.y - vD.y);
+  float div = 
+      -2.0 * pushConstants.density / pushConstants.dt * 
+          (cellDims.y * (vR.x - vL.x) + cellDims.x * (vU.y - vD.y));
+
+  if (pushConstants.clear) {
+    div = 0.0;
+  }
 
   imageStore(divergenceField, texelPos, vec4(div, 0.0, 0.0, 1.0));
 }

@@ -30,6 +30,8 @@ public:
   }
 
 private:
+  bool _clear = true;
+  
   // Velocity advection pass
   ImageResource _velocityField{};
   ImageResource _advectedVelocityField{};

@@ -6,16 +6,22 @@ layout(set=0, binding=0) uniform sampler2D velocityField;
 layout(set=0, binding=1) uniform writeonly image2D advectedVelocityField;
 
 layout(push_constant) uniform PushConstants {
-  float width;
-  float height;
+  int width;
+  int height;
   float dt;
   float sorOmega;
   float density;
   float vorticity;
+  bool clear;
 } pushConstants;
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
+      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+    return;
+  }
+
   vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
   vec2 texelUv = 0.5 * cellDims + vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
 
@@ -51,7 +57,9 @@ void main() {
   vec2 vortConf = vec2(curlD - curlU, curlR - curlL);
   float vortConfMag = length(vortConf);
   if (vortConfMag > 0.00001) {
-    vortConf *= cellDims * pushConstants.vorticity / vortConfMag;
+    vortConf *= cellDims.yx * pushConstants.vorticity / vortConfMag;
+  } else {
+    vortConf = vec2(0.0);
   }
 
   imageStore(advectedVelocityField, texelPos, vec4(srcVel + vortConf, 0.0, 1.0));

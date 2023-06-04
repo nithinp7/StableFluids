@@ -7,12 +7,13 @@ using namespace AltheaEngine;
 
 namespace {
 struct SimulationConstants {
-  float width;
-  float height;
+  int width;
+  int height;
   float dt;
   float sorOmega;
   float density;
   float vorticity;
+  bool clear;
 };
 } // namespace
 
@@ -276,15 +277,18 @@ void Simulation::update(
   const VkExtent2D& extent = app.getSwapChainExtent();
 
   SimulationConstants constants{};
-  constants.width = static_cast<float>(extent.width);
-  constants.height = static_cast<float>(extent.height);
+  constants.width = static_cast<int>(extent.width);
+  constants.height = static_cast<int>(extent.height);
   constants.dt = dt;
-  constants.sorOmega = 1.0f;
+  constants.sorOmega = 1.f;
   constants.density = 0.5f;
   constants.vorticity = 0.5f;
+  constants.clear = this->_clear;
 
-  uint32_t groupCountX = extent.width / 16;
-  uint32_t groupCountY = extent.height / 16;
+  this->_clear = false;
+
+  uint32_t groupCountX = (extent.width - 1) / 16 + 1;
+  uint32_t groupCountY = (extent.height - 1) / 16 + 1;
 
   // Advect velocity pass
   {

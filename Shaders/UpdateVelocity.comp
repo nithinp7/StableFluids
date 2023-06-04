@@ -7,21 +7,26 @@ layout(set=0, binding=1, rg16f) uniform readonly image2D advectedVelocityField;
 layout(set=0, binding=2) uniform writeonly image2D velocityField;
 
 layout(push_constant) uniform PushConstants {
-  float width;
-  float height;
+  int width;
+  int height;
   float dt;
   float sorOmega;
   float density;
   float vorticity;
+  bool clear;
 } pushConstants;
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
+      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+    return;
+  }
   
   // Project velocity field to be divergence free
 
   // TODO: Parameterize these
-  float h = 1.0 / pushConstants.width;
+  vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
 
   vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
   float pR = imageLoad(pressureField, texelPos + ivec2(1, 0)).r;
@@ -29,7 +34,11 @@ void main() {
   float pU = imageLoad(pressureField, texelPos + ivec2(0, 1)).r;
   float pD = imageLoad(pressureField, texelPos + ivec2(0, -1)).r;
 
-  vel -= vec2(pR - pL, pU - pD) * pushConstants.dt / (2.0 * pushConstants.density * h);
+  vel -= vec2(pR - pL, pU - pD) * pushConstants.dt / (2.0 * pushConstants.density * cellDims);
+
+  if (pushConstants.clear) {
+    vel = vec2(0.0);
+  }
 
   imageStore(velocityField, texelPos, vec4(vel, 0.0, 1.0));
 }

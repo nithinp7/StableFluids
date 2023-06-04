@@ -7,16 +7,21 @@ layout(set=0, binding=1, r16f) uniform readonly image2D prevPressureField;
 layout(set=0, binding=2) uniform writeonly image2D pressureField;
 
 layout(push_constant) uniform PushConstants {
-  float width;
-  float height;
+  int width;
+  int height;
   float dt;
   float sorOmega;
   float density;
   float vorticity;
+  bool clear;
 } pushConstants;
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
+      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+    return;
+  }
   
   float div = imageLoad(divergenceField, texelPos).r;
   float p = imageLoad(prevPressureField, texelPos).r;
@@ -26,7 +31,12 @@ void main() {
   float pD = imageLoad(prevPressureField, texelPos + ivec2(0, -2)).r;
 
   // Update pressure
-  p = mix(p, 0.25 * (div + pR + pL + pU + pD), pushConstants.sorOmega); 
+  p = (1.0 - pushConstants.sorOmega) * p + pushConstants.sorOmega * 0.25 * (div + pR + pL + pU + pD);
+  // p = mix(p, 0.25 * (div + pR + pL + pU + pD), pushConstants.sorOmega); 
+
+  if (pushConstants.clear) {
+    p = 0.0;
+  }
 
   imageStore(pressureField, texelPos, vec4(p, 0.0, 0.0, 1.0));
 }
