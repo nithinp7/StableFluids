@@ -16,6 +16,7 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 vec2 sampleVel(vec2 uv) {
+  // TODO: Parameterize grid scale / coords
   vec2 v = texture(velocityField, uv).rg;
   vec2 sn = vec2(1.0);
   if (uv.x < 0 || uv.x > 1.0) {
@@ -30,37 +31,39 @@ vec2 sampleVel(vec2 uv) {
 }
 
 void main() {
+  vec2 uvScale = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  float h = max(uvScale.x, uvScale.y);
+
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
   if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
       texelPos.y < 0 || texelPos.y >= pushConstants.height) {
     return;
   }
 
-  vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
-  vec2 texelUv = 0.5 * cellDims + vec2(texelPos) / vec2(pushConstants.width, pushConstants.height);
+  vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
 
   // TODO: Introduce temperature and buoyancy
   // 
-  vec2 vel = texture(velocityField, texelUv).rg;
-  vec2 srcUv = texelUv - vel * pushConstants.dt;
-  vec2 srcVel = texture(velocityField, srcUv).rg;
+  vec2 vel = sampleVel(texelUv);
+  vec2 srcUv = texelUv - vel * uvScale / h * pushConstants.dt;
+  vec2 srcVel = sampleVel(srcUv);
 
   // For testing...
-  if (srcUv.x <= 0.001 && srcUv.y > 0.45 && srcUv.y < 0.55) {
-    srcVel = vec2(0.5, 0.0);
+  if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {
+    srcVel = vec2(2.5, 0.0);
   }
 
   // Velocities diagonal to the current cell, used multiple
   // times by the curl computation
-  vec2 velLD = sampleVel(texelUv - cellDims);
-  vec2 velRD = sampleVel(texelUv + vec2(cellDims.x, -cellDims.y));
-  vec2 velRU = sampleVel(texelUv + cellDims);
-  vec2 velLU = sampleVel(texelUv + vec2(-cellDims.x, cellDims.y));
+  vec2 velLD = sampleVel(texelUv - uvScale);
+  vec2 velRD = sampleVel(texelUv + vec2(uvScale.x, -uvScale.y));
+  vec2 velRU = sampleVel(texelUv + uvScale);
+  vec2 velLU = sampleVel(texelUv + vec2(-uvScale.x, uvScale.y));
 
-  vec2 velLL = sampleVel(texelUv + vec2(-2.0 * cellDims.x, 0.0));
-  vec2 velRR = sampleVel(texelUv + vec2(2.0 * cellDims.x, 0.0));
-  vec2 velDD = sampleVel(texelUv + vec2(0.0, -2.0 * cellDims.y));
-  vec2 velUU = sampleVel(texelUv + vec2(0.0, 2.0 * cellDims.y));
+  vec2 velLL = sampleVel(texelUv + vec2(-2.0 * uvScale.x, 0.0));
+  vec2 velRR = sampleVel(texelUv + vec2(2.0 * uvScale.x, 0.0));
+  vec2 velDD = sampleVel(texelUv + vec2(0.0, -2.0 * uvScale.y));
+  vec2 velUU = sampleVel(texelUv + vec2(0.0, 2.0 * uvScale.y));
 
   // TODO: Verify curl orientation (right vs left handed)
   float curlL = velLU.x - velLD.x + velLL.y - vel.y;
@@ -71,12 +74,14 @@ void main() {
   vec2 vortConf = vec2(curlD - curlU, curlR - curlL);
   float vortConfMag = length(vortConf);
   if (vortConfMag > 0.00001) {
-    vortConf *= cellDims.yx * pushConstants.vorticity / vortConfMag;
+    vortConf *= h * pushConstants.vorticity / vortConfMag;
   } else {
     vortConf = vec2(0.0);
   }
 
-  imageStore(advectedVelocityField, texelPos, vec4(srcVel + vortConf, 0.0, 1.0));
+  vec2 advVel = srcVel + vortConf;
+
+  imageStore(advectedVelocityField, texelPos, vec4(advVel, 0.0, 1.0));
 }
 
 

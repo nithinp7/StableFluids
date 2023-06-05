@@ -16,8 +16,21 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 vec2 loadVel(ivec2 pos) {
-  pos = clamp(pos, ivec2(0), ivec2(pushConstants.width, pushConstants.height));
-  return imageLoad(advectedVelocityField, pos).rg;
+  // TODO: Parameterize grid scale / coords
+  vec2 sn = vec2(1.0);
+  if (pos.x < 0 || pos.x >= pushConstants.width) {
+    sn.x *= -1.0;
+  }
+
+  if (pos.y < 0 || pos.y >= pushConstants.height) {
+    sn.y *= -1.0;
+  }
+
+  pos = clamp(pos, ivec2(0), ivec2(pushConstants.width - 1, pushConstants.height - 1));
+  vec2 v = imageLoad(advectedVelocityField, pos).rg;
+  return sn * v;
+  // pos = clamp(pos, ivec2(0), ivec2(pushConstants.width - 1, pushConstants.height - 1));
+  // return imageLoad(advectedVelocityField, pos).rg;
 }
 
 void main() {
@@ -27,7 +40,7 @@ void main() {
     return;
   }
 
-  vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  float h = max(1.0 / pushConstants.width, 1.0 / pushConstants.height);
   
   // Calculate local divergence  
   vec2 vel = loadVel(texelPos);
@@ -37,8 +50,8 @@ void main() {
   vec2 vD = loadVel(texelPos + ivec2(0, -1));
 
   float div = 
-      -2.0 * pushConstants.density / pushConstants.dt * 
-          (cellDims.y * (vR.x - vL.x) + cellDims.x * (vU.y - vD.y));
+      -2.0 * h * pushConstants.density / pushConstants.dt *
+          (vR.x - vL.x + vU.y - vD.y);
 
   if (pushConstants.clear) {
     div = 0.0;

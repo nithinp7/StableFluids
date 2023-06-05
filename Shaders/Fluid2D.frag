@@ -16,13 +16,14 @@ void main() {
   vec2 vel = texture(velocityField, screenUV).rg;
   float pres = texture(pressureField, screenUV).r;
   // color = vec4(1.0, 0.0, 0.0, 1.0);//
-  // color = vec4(abs(vel), 0.0, 1.0);
-  color = vec4(abs(vel), abs(pres), 1.0);
+  // color = vec4(abs(pres), 0.0, 0.0, 1.0);
+  color = vec4(abs(vel), 0.0, 1.0);
+  // color = vec4(0.0, 0.0, abs(pres), 1.0);
   //vec4(0.5 * normalize(vel) + vec2(0.5), 0.0, 1.0);
 
 #ifndef SKIP_TONEMAP
   // TODO: Tone-map??
-  const float exposure = 0.5;
+  const float exposure = 0.8;
   color.rgb = vec3(1.0) - exp(-color.rgb * exposure);
 #endif
 }

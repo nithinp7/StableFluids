@@ -29,6 +29,8 @@ float loadP(ivec2 pos) {
           abs(pos.y) - 1 : 
           pos.y : 
         (2 * pushConstants.height - pos.y - 1);
+  // pos = clamp(pos, ivec2(0), ivec2(pushConstants.width - 1, pushConstants.height - 1));
+
   return imageLoad(prevPressureField, pos).r;  
 }
 
