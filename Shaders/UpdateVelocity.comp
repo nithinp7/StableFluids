@@ -17,8 +17,21 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 float loadP(ivec2 pos) {
-  pos = clamp(pos, ivec2(0), ivec2(pushConstants.width - 1, pushConstants.height - 1));
-  return imageLoad(pressureField, pos).r;
+  pos.x = 
+      (pos.x < pushConstants.width) ? 
+        (pos.x < 0) ? 
+          abs(pos.x) - 1 : 
+          pos.x : 
+        (2 * pushConstants.width - pos.x - 1);
+  pos.y = 
+      (pos.y < pushConstants.height) ? 
+        (pos.y < 0) ? 
+          abs(pos.y) - 1 : 
+          pos.y : 
+        (2 * pushConstants.height - pos.y - 1);
+  // pos = clamp(pos, ivec2(0), ivec2(pushConstants.width - 1, pushConstants.height - 1));
+
+  return imageLoad(pressureField, pos).r;  
 }
 
 void main() {
@@ -29,16 +42,15 @@ void main() {
   }
   
   // Project velocity field to be divergence free
-
   float h = max(1.0 / pushConstants.width, 1.0 / pushConstants.height);
 
-  vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;// / vec2(pushConstants.width, pushConstants.height);
+  vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
   float pR = loadP(texelPos + ivec2(1, 0));
   float pL = loadP(texelPos + ivec2(-1, 0));
   float pU = loadP(texelPos + ivec2(0, 1));
   float pD = loadP(texelPos + ivec2(0, -1));
 
-  vel -= vec2(pR - pL, pU - pD) * pushConstants.dt / (2.0 * pushConstants.density * h);
+  vel -= 0.5 / h * vec2(pR - pL, pU - pD);
 
   if (pushConstants.clear) {
     vel = vec2(0.0);

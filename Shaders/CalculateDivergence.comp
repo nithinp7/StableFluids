@@ -49,9 +49,7 @@ void main() {
   vec2 vU = loadVel(texelPos + ivec2(0, 1));
   vec2 vD = loadVel(texelPos + ivec2(0, -1));
 
-  float div = 
-      -2.0 * h * pushConstants.density / pushConstants.dt *
-          (vR.x - vL.x + vU.y - vD.y);
+  float div = 0.5 / h * (vR.x - vL.x + vU.y - vD.y);
 
   if (pushConstants.clear) {
     div = 0.0;

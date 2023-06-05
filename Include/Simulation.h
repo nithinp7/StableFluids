@@ -29,9 +29,8 @@ public:
     return this->_pressureFieldA;
   }
 
+  bool clear = true;
 private:
-  bool _clear = true;
-  bool _stutter = false;
 
   // Velocity advection pass
   ImageResource _velocityField{};

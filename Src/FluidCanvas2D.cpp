@@ -47,6 +47,12 @@ void FluidCanvas2D::initGame(Application& app) {
           }
         }
       });
+
+  app.getInputManager().addKeyBinding(
+      {GLFW_KEY_C, GLFW_PRESS, 0},
+      [&app, that = this]() {
+        that->_pSimulation->clear = true;
+      });
 }
 
 void FluidCanvas2D::shutdownGame(Application& app) {}

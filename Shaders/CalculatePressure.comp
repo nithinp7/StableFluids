@@ -48,9 +48,10 @@ void main() {
   float pU = loadP(texelPos + ivec2(0, 2));
   float pD = loadP(texelPos + ivec2(0, -2));
 
+  float h = max(1.0 / pushConstants.width, 1.0 / pushConstants.height);
+
   // Update pressure
-  p = (1.0 - pushConstants.sorOmega) * p + pushConstants.sorOmega * 0.25 * (div + pR + pL + pU + pD);
-  // p = mix(p, 0.25 * (div + pR + pL + pU + pD), pushConstants.sorOmega); 
+  p = 0.25 * (pR + pL + pU + pD - div * h * h);
 
   if (pushConstants.clear) {
     p = 0.0;

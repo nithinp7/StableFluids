@@ -49,8 +49,8 @@ void main() {
   vec2 srcVel = sampleVel(srcUv);
 
   // For testing...
-  if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {
-    srcVel = vec2(2.5, 0.0);
+  if (srcUv.x <= 0.01 && srcUv.y > 0.49 && srcUv.y < 0.51) {
+    srcVel += vec2(10000.0, 0.0) * pushConstants.dt;
   }
 
   // Velocities diagonal to the current cell, used multiple
@@ -80,6 +80,10 @@ void main() {
   }
 
   vec2 advVel = srcVel + vortConf;
+
+  if (pushConstants.clear) {
+    advVel = vec2(0.0);
+  }
 
   imageStore(advectedVelocityField, texelPos, vec4(advVel, 0.0, 1.0));
 }

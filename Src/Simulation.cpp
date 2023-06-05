@@ -21,11 +21,7 @@ namespace StableFluids {
 
 Simulation::Simulation(
     Application& app,
-    SingleTimeCommandBuffer& commandBuffer) {
-  app.getInputManager().addMouseBinding({GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, 0}, [this](){
-    this->_stutter = true;
-  });
-  
+    SingleTimeCommandBuffer& commandBuffer) {  
   const VkExtent2D& extent = app.getSwapChainExtent();
 
   // Create texture resources
@@ -287,14 +283,13 @@ void Simulation::update(
   SimulationConstants constants{};
   constants.width = static_cast<int>(extent.width);
   constants.height = static_cast<int>(extent.height);
-  constants.dt = this->_stutter ? 2.0f : dt;
+  constants.dt = dt;
   constants.sorOmega = 1.f;
   constants.density = 0.5f;
   constants.vorticity = 0.5f;
-  constants.clear = this->_clear;
+  constants.clear = this->clear;
 
-  this->_clear = false;
-  this->_stutter = false;
+  this->clear = false;
 
   uint32_t groupCountX = (extent.width - 1) / 16 + 1;
   uint32_t groupCountY = (extent.height - 1) / 16 + 1;
