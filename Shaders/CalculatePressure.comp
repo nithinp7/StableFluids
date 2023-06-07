@@ -9,6 +9,7 @@ layout(set=0, binding=2) uniform writeonly image2D pressureField;
 layout(push_constant) uniform PushConstants {
   int width;
   int height;
+  float time;
   float dt;
   float sorOmega;
   float density;

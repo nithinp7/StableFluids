@@ -5,10 +5,13 @@ layout(local_size_x = 16, local_size_y = 16) in;
 layout(set=0, binding=0, r16f) uniform readonly image2D pressureField;
 layout(set=0, binding=1, rg16f) uniform readonly image2D advectedVelocityField;
 layout(set=0, binding=2) uniform writeonly image2D velocityField;
+layout(set=0, binding=3) uniform sampler2D colorField;
+layout(set=0, binding=4) uniform writeonly image2D advectedColorField;
 
 layout(push_constant) uniform PushConstants {
   int width;
   int height;
+  float time;
   float dt;
   float sorOmega;
   float density;
@@ -34,6 +37,21 @@ float loadP(ivec2 pos) {
   return imageLoad(pressureField, pos).r;  
 }
 
+vec2 sampleColor(vec2 uv) {
+  // TODO: Parameterize grid scale / coords
+  vec2 v = texture(colorField, uv).rg;
+  vec2 sn = vec2(1.0);
+  if (uv.x < 0 || uv.x > 1.0) {
+    sn.x *= -1.0;
+  }
+
+  if (uv.y < 0 || uv.y > 1.0) {
+    sn.y *= -1.0;
+  }
+
+  return sn * v;
+}
+
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
   if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
@@ -42,7 +60,10 @@ void main() {
   }
   
   // Project velocity field to be divergence free
-  float h = max(1.0 / pushConstants.width, 1.0 / pushConstants.height);
+  vec2 uvScale = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
+
+  float h = max(uvScale.x, uvScale.y);
 
   vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
   float pR = loadP(texelPos + ivec2(1, 0));
@@ -52,11 +73,15 @@ void main() {
 
   vel -= 0.5 / h * vec2(pR - pL, pU - pD);
 
+  vec2 colorSrcUv = texelUv - vel * uvScale / h * pushConstants.dt;
+  vec4 advColor = texture(colorField, colorSrcUv);
+
   if (pushConstants.clear) {
     vel = vec2(0.0);
   }
 
   imageStore(velocityField, texelPos, vec4(vel, 0.0, 1.0));
+  imageStore(advectedColorField, texelPos, advColor);
 }
 
 

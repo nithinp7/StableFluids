@@ -15,7 +15,10 @@ namespace StableFluids {
 class Simulation {
 public:
   Simulation(Application& app, SingleTimeCommandBuffer& commandBuffer);
-  void update(const Application& app, VkCommandBuffer commandBuffer, float dt);
+  void update(
+      const Application& app,
+      VkCommandBuffer commandBuffer,
+      const FrameContext& frame);
 
   const ImageResource& getVelocityTexture() const {
     return this->_velocityField;
@@ -29,9 +32,11 @@ public:
     return this->_pressureFieldA;
   }
 
-  bool clear = true;
-private:
+  const ImageResource& getColorTexture() const { return this->_colorFieldA; }
 
+  bool clear = true;
+
+private:
   // Velocity advection pass
   ImageResource _velocityField{};
   ImageResource _advectedVelocityField{};
@@ -55,8 +60,15 @@ private:
   std::unique_ptr<ComputePipeline> _pPressurePass;
 
   // Velocity update pass
+  ImageResource _colorFieldA{};
+  ImageResource _colorFieldB{};
   std::unique_ptr<DescriptorSetAllocator> _pUpdateMaterialAllocator;
   std::unique_ptr<DescriptorSet> _pUpdateMaterial;
   std::unique_ptr<ComputePipeline> _pUpdateVelocityPass;
+
+  // Advect color dye
+  std::unique_ptr<DescriptorSetAllocator> _pUpdateColorMaterialAllocator;
+  std::unique_ptr<DescriptorSet> _pUpdateColorMaterial;
+  std::unique_ptr<ComputePipeline> _pUpdateColorPass;
 };
 } // namespace StableFluids

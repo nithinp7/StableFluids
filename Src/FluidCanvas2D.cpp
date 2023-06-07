@@ -98,6 +98,8 @@ void FluidCanvas2D::_createGlobalResources(
         .addTextureBinding()
         // Add texture slot for pressure field
         .addTextureBinding()
+        // Add texture slot for color dye
+        .addTextureBinding()
         // Global uniforms
         .addUniformBufferBinding();
 
@@ -113,6 +115,7 @@ void FluidCanvas2D::_createGlobalResources(
         .bindTexture(this->_pSimulation->getVelocityTexture())
         .bindTexture(this->_pSimulation->getDivergenceTexture())
         .bindTexture(this->_pSimulation->getPressureTexture())
+        .bindTexture(this->_pSimulation->getColorTexture())
 
         // Bind global uniforms
         .bindTransientUniforms(*this->_pGlobalUniforms);
@@ -176,7 +179,7 @@ void FluidCanvas2D::draw(
     Application& app,
     VkCommandBuffer commandBuffer,
     const FrameContext& frame) {
-  this->_pSimulation->update(app, commandBuffer, frame.deltaTime);
+  this->_pSimulation->update(app, commandBuffer, frame);
 
   VkDescriptorSet globalDescriptorSet =
       this->_pGlobalResources->getCurrentDescriptorSet(frame);

@@ -8,6 +8,7 @@ layout(set=0, binding=1) uniform writeonly image2D advectedVelocityField;
 layout(push_constant) uniform PushConstants {
   int width;
   int height;
+  float time;
   float dt;
   float sorOmega;
   float density;
@@ -49,8 +50,8 @@ void main() {
   vec2 srcVel = sampleVel(srcUv);
 
   // For testing...
-  if (srcUv.x <= 0.01 && srcUv.y > 0.49 && srcUv.y < 0.51) {
-    srcVel += vec2(10000.0, 0.0) * pushConstants.dt;
+  if (srcUv.x <= 0.01 && srcUv.y > 0.49 && srcUv.y < 0.51) {// && pushConstants.clear) {
+    srcVel += vec2(10.0, 0.0) * pushConstants.dt;
   }
 
   // Velocities diagonal to the current cell, used multiple

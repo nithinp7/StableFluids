@@ -8,6 +8,7 @@ layout(set=0, binding=1) uniform writeonly image2D divergenceField;
 layout(push_constant) uniform PushConstants {
   int width;
   int height;
+  float time;
   float dt;
   float sorOmega;
   float density;

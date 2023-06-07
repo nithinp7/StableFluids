@@ -2,7 +2,7 @@
 
 layout(location=0) out vec2 screenUV;
 
-layout(set=0, binding=3) uniform UniformBufferObject {
+layout(set=0, binding=4) uniform UniformBufferObject {
   vec4 debug;
 } globals;
 
