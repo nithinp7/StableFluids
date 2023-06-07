@@ -275,10 +275,6 @@ Simulation::Simulation(
         // Advected velocity field
         .addStorageImageBinding()
         // "Fixed" velocity field
-        .addStorageImageBinding()
-        // Previous color dye field
-        .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
-        // Advected color field
         .addStorageImageBinding();
 
     this->_pUpdateMaterialAllocator =
@@ -294,11 +290,7 @@ Simulation::Simulation(
             this->_advectedVelocityField.sampler)
         .bindStorageImage(
             this->_velocityField.view,
-            this->_velocityField.sampler)
-        .bindTextureDescriptor(
-            this->_colorFieldA.view,
-            this->_colorFieldA.sampler)
-        .bindStorageImage(this->_colorFieldB.view, this->_colorFieldB.sampler);
+            this->_velocityField.sampler);
 
     // Build pipeine
     ComputePipelineBuilder builder{};
@@ -309,6 +301,42 @@ Simulation::Simulation(
         .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
 
     this->_pUpdateVelocityPass =
+        std::make_unique<ComputePipeline>(app, std::move(builder));
+  }
+
+  // Advect color field
+  {
+    // Build material
+    DescriptorSetLayoutBuilder layoutBuilder{};
+    layoutBuilder
+        // Velocity field
+        .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
+        // Previous color field
+        .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
+        // Advected color field
+        .addStorageImageBinding();
+
+    this->_pAdvectColorMaterialAllocator =
+        std::make_unique<DescriptorSetAllocator>(app, layoutBuilder, 1);
+    this->_pAdvectColorMaterial = std::make_unique<DescriptorSet>(
+        this->_pAdvectColorMaterialAllocator->allocate());
+    this->_pAdvectColorMaterial->assign()
+        .bindTextureDescriptor(
+            this->_velocityField.view,
+            this->_velocityField.sampler)
+        .bindTextureDescriptor(
+            this->_colorFieldA.view,
+            this->_colorFieldA.sampler)
+        .bindStorageImage(this->_colorFieldB.view, this->_colorFieldB.sampler);
+
+    // Build pipeine
+    ComputePipelineBuilder builder{};
+    builder.setComputeShader(GProjectDirectory + "/Shaders/AdvectColor.comp");
+    builder.layoutBuilder
+        .addDescriptorSet(this->_pAdvectColorMaterialAllocator->getLayout())
+        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+
+    this->_pAdvectColorPass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
   }
 
@@ -497,16 +525,6 @@ void Simulation::update(
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
     // Note: The advected velocity field texture has already been transitioned
     // for reading by this point.
-    this->_colorFieldA.image.transitionLayout(
-        commandBuffer,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_ACCESS_SHADER_READ_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-    this->_colorFieldB.image.transitionLayout(
-        commandBuffer,
-        VK_IMAGE_LAYOUT_GENERAL,
-        VK_ACCESS_SHADER_WRITE_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
     this->_pUpdateVelocityPass->bindPipeline(commandBuffer);
     VkDescriptorSet material = this->_pUpdateMaterial->getVkDescriptorSet();
@@ -522,6 +540,46 @@ void Simulation::update(
     vkCmdPushConstants(
         commandBuffer,
         this->_pUpdateVelocityPass->getLayout(),
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        sizeof(SimulationConstants),
+        &constants);
+    vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
+  }
+
+  // Advect color field
+  {
+    this->_velocityField.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_colorFieldA.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_colorFieldB.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    this->_pAdvectColorPass->bindPipeline(commandBuffer);
+    VkDescriptorSet material =
+        this->_pAdvectColorMaterial->getVkDescriptorSet();
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        this->_pAdvectColorPass->getLayout(),
+        0,
+        1,
+        &material,
+        0,
+        nullptr);
+    vkCmdPushConstants(
+        commandBuffer,
+        this->_pAdvectColorPass->getLayout(),
         VK_SHADER_STAGE_COMPUTE_BIT,
         0,
         sizeof(SimulationConstants),

@@ -26,7 +26,7 @@ void main() {
   vec4 color = imageLoad(src, texelPos);
 
   if (pushConstants.clear) {
-    ivec2 t = (texelPos / 100) % 2;
+    ivec2 t = ((ivec2(50) + texelPos) / 100) % 2;
     int sum = t.x + t.y;
     if (sum == 0) {
       color = vec4(1.0, 0.0, 0.0, 1.0);
@@ -43,8 +43,8 @@ void main() {
   vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
 
   if (texelUv.x <= 0.01 && texelUv.y > 0.499 && texelUv.y < 0.501) {// && pushConstants.clear) {
-    float f = sin(pushConstants.time);
-    color = vec4(1.0, f, 0.0, 1.0);
+    // float f = sin(pushConstants.time);
+    // color = vec4(1.0, f, 0.0, 1.0);
   }
 
   imageStore(dest, texelPos, color);

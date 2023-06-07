@@ -1,0 +1,67 @@
+
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(set=0, binding=0) uniform sampler2D velocityField;
+layout(set=0, binding=1) uniform sampler2D colorField;
+layout(set=0, binding=2) uniform writeonly image2D advectedColorField;
+
+layout(push_constant) uniform PushConstants {
+  int width;
+  int height;
+  float time;
+  float dt;
+  float sorOmega;
+  float density;
+  float vorticity;
+  bool clear;
+} pushConstants;
+
+vec2 sampleVel(vec2 uv) {
+  vec2 v = texture(velocityField, uv).rg;
+  vec2 sn = vec2(1.0);
+  if (uv.x < 0 || uv.x > 1.0) {
+    sn.x *= -1.0;
+  }
+
+  if (uv.y < 0 || uv.y > 1.0) {
+    sn.y *= -1.0;
+  }
+
+  return sn * v;
+}
+
+void main() {
+  ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
+      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+    return;
+  }
+  
+  // Advect color dye
+  vec2 uvScale = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
+
+  float h = max(uvScale.x, uvScale.y);
+
+  const int COLOR_ADV_STEPS = 128;
+  float dt = pushConstants.dt / float(COLOR_ADV_STEPS);
+
+  // Integrate backwards through velocity field
+  for (int i = 0; i < COLOR_ADV_STEPS; ++i) {
+    vec2 vel = sampleVel(texelUv);
+    texelUv -= vel * uvScale / h * dt;
+  }
+
+  vec4 srcColor = texture(colorField, texelUv);
+
+  if (pushConstants.clear) {
+    srcColor = vec4(0.0, 0.0, 0.0, 1.0);
+  }
+
+  imageStore(advectedColorField, texelPos, srcColor);
+}
+
+
+
+

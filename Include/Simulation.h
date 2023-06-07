@@ -67,6 +67,11 @@ private:
   std::unique_ptr<ComputePipeline> _pUpdateVelocityPass;
 
   // Advect color dye
+  std::unique_ptr<DescriptorSetAllocator> _pAdvectColorMaterialAllocator;
+  std::unique_ptr<DescriptorSet> _pAdvectColorMaterial;
+  std::unique_ptr<ComputePipeline> _pAdvectColorPass;
+  
+  // Udate color field
   std::unique_ptr<DescriptorSetAllocator> _pUpdateColorMaterialAllocator;
   std::unique_ptr<DescriptorSet> _pUpdateColorMaterial;
   std::unique_ptr<ComputePipeline> _pUpdateColorPass;

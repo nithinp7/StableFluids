@@ -45,14 +45,24 @@ void main() {
 
   // TODO: Introduce temperature and buoyancy
   // 
+  const int ADV_STEPS = 128;
   vec2 vel = sampleVel(texelUv);
-  vec2 srcUv = texelUv - vel * uvScale / h * pushConstants.dt;
-  vec2 srcVel = sampleVel(srcUv);
-
-  // For testing...
-  if (srcUv.x <= 0.01 && srcUv.y > 0.49 && srcUv.y < 0.51) {// && pushConstants.clear) {
-    srcVel += vec2(10.0, 0.0) * pushConstants.dt;
+  vec2 srcVel = vel;
+  vec2 srcUv = texelUv;
+  float dt = pushConstants.dt / float(ADV_STEPS);
+  for (int i = 0; i < ADV_STEPS; ++i) {
+    srcUv -= srcVel * uvScale / h * dt;
+    srcVel = sampleVel(srcUv);
+    // For testing...
+    if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && pushConstants.clear) {
+      srcVel += vec2(100000.0, 0.0) * dt;
+    }
   }
+
+  // vec2 vel = sampleVel(texelUv);
+  // vec2 srcUv = texelUv - vel * uvScale / h * pushConstants.dt;
+  // vec2 srcVel = sampleVel(srcUv);
+
 
   // Velocities diagonal to the current cell, used multiple
   // times by the curl computation
