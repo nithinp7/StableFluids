@@ -31,6 +31,16 @@ vec2 sampleVel(vec2 uv) {
   return sn * v;
 }
 
+vec2 colorGrad(vec2 uv, vec2 cellDims, float h) {
+  // Calculate color gradient at destination
+  vec3 cR = texture(colorField, uv + vec2(cellDims.x, 0.0)).rgb;
+  vec3 cL = texture(colorField, uv + vec2(-cellDims.x, 0.0)).rgb;
+  vec3 cU = texture(colorField, uv + vec2(0.0, cellDims.y)).rgb;
+  vec3 cD = texture(colorField, uv + vec2(0.0, -cellDims.y)).rgb;
+
+  return 0.5 * vec2(length(cR - cL), length(cU - cD)) / h;
+}
+
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
   if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
@@ -39,18 +49,20 @@ void main() {
   }
   
   // Advect color dye
-  vec2 uvScale = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
-  vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
+  vec2 cellDims = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * cellDims;
+  float h = max(cellDims.x, cellDims.y);
 
-  float h = max(uvScale.x, uvScale.y);
-
-  const int COLOR_ADV_STEPS = 128;
+  const int COLOR_ADV_STEPS = 12;
   float dt = pushConstants.dt / float(COLOR_ADV_STEPS);
 
   // Integrate backwards through velocity field
   for (int i = 0; i < COLOR_ADV_STEPS; ++i) {
+    vec2 colGradMag = colorGrad(texelUv, cellDims, h);
     vec2 vel = sampleVel(texelUv);
-    texelUv -= vel * uvScale / h * dt;
+    // Reject the portion of the velocity along the color gradient
+    vel -= vel * min(dot(vel, colGradMag), 0.0);
+    texelUv -= vel * cellDims / h * dt;
   }
 
   vec4 srcColor = texture(colorField, texelUv);

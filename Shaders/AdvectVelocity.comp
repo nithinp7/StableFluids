@@ -45,7 +45,7 @@ void main() {
 
   // TODO: Introduce temperature and buoyancy
   // 
-  const int ADV_STEPS = 128;
+  const int ADV_STEPS = 1;
   vec2 vel = sampleVel(texelUv);
   vec2 srcVel = vel;
   vec2 srcUv = texelUv;
@@ -55,7 +55,7 @@ void main() {
     srcVel = sampleVel(srcUv);
     // For testing...
     if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && pushConstants.clear) {
-      srcVel += vec2(100000.0, 0.0) * dt;
+      srcVel += vec2(10.0, 0.0) * pushConstants.dt;
     }
   }
 
