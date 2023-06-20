@@ -19,6 +19,14 @@ public:
       const Application& app,
       VkCommandBuffer commandBuffer,
       const FrameContext& frame);
+  
+  const ImageResource& getFractalIterations() const {
+    return this->_iterationCounts;
+  }
+
+  const ImageResource& getFractalTexture() const {
+    return this->_fractalTexture;
+  }
 
   const ImageResource& getVelocityTexture() const {
     return this->_velocityField;
@@ -35,8 +43,20 @@ public:
   const ImageResource& getColorTexture() const { return this->_colorFieldA; }
 
   bool clear = true;
+  float zoom = 1.0f;
+  glm::vec2 offset = glm::vec2(-0.706835, 0.235839);
 
 private:
+  float _lastZoom = 0.0f;
+  glm::vec2 _lastOffset = glm::vec2(0.0f);
+
+  // Fractal pass
+  ImageResource _iterationCounts{};
+  ImageResource _fractalTexture{};
+  std::unique_ptr<DescriptorSetAllocator> _pFractalMaterialAllocator;
+  std::unique_ptr<DescriptorSet> _pFractalMaterial;
+  std::unique_ptr<ComputePipeline> _pFractalPass;
+
   // Velocity advection pass
   ImageResource _velocityField{};
   ImageResource _advectedVelocityField{};

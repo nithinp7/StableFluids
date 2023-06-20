@@ -50,9 +50,15 @@ void FluidCanvas2D::initGame(Application& app) {
 
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_C, GLFW_PRESS, 0},
-      [&app, that = this]() {
-        that->_pSimulation->clear = true;
-      });
+      [&app, that = this]() { that->_pSimulation->clear = true; });
+
+  app.getInputManager().addKeyBinding(
+      {GLFW_KEY_W, GLFW_PRESS, 0},
+      [&app, that = this]() { that->_pSimulation->zoom *= 2.0f; });
+
+  app.getInputManager().addKeyBinding(
+      {GLFW_KEY_S, GLFW_PRESS, 0},
+      [&app, that = this]() { that->_pSimulation->zoom *= 0.5f; });
 }
 
 void FluidCanvas2D::shutdownGame(Application& app) {}
@@ -78,7 +84,7 @@ void FluidCanvas2D::destroyRenderState(Application& app) {
 
 void FluidCanvas2D::tick(Application& app, const FrameContext& frame) {
   GlobalUniforms globalUniforms;
-  // TODO: Update globalUniforms
+  globalUniforms.time = frame.currentTime;
 
   this->_pGlobalUniforms->updateUniforms(globalUniforms, frame);
 }
@@ -92,6 +98,8 @@ void FluidCanvas2D::_createGlobalResources(
 
     // Add texture slots for simulation data
     globalResourceLayout
+        // Add texture slot for fractal colors
+        .addTextureBinding()
         // Add texture slot for velocity field
         .addTextureBinding()
         // Add texture slot for divergence field
@@ -112,6 +120,7 @@ void FluidCanvas2D::_createGlobalResources(
 
     assignment
         // Bind simulation resources
+        .bindTexture(this->_pSimulation->getFractalTexture())
         .bindTexture(this->_pSimulation->getVelocityTexture())
         .bindTexture(this->_pSimulation->getDivergenceTexture())
         .bindTexture(this->_pSimulation->getPressureTexture())

@@ -15,6 +15,8 @@ struct SimulationConstants {
   float density;
   float vorticity;
   bool clear;
+  alignas(8) glm::vec2 offset;
+  float zoom;
 };
 } // namespace
 
@@ -29,6 +31,44 @@ Simulation::Simulation(
 
   // TODO: More efficient texture formats? Where can we afford less precision?
   // Is 16-bit enough floating-point precision for all these stages?
+
+  // Iteration counts texture
+  {
+    ImageOptions imageOptions{};
+    imageOptions.format = VK_FORMAT_R32_SINT;
+    imageOptions.width = extent.width;
+    imageOptions.height = extent.height;
+    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+    this->_iterationCounts.image = Image(app, imageOptions);
+
+    ImageViewOptions viewOptions{};
+    viewOptions.format = imageOptions.format;
+    this->_iterationCounts.view =
+        ImageView(app, this->_iterationCounts.image, viewOptions);
+
+    SamplerOptions samplerOptions{};
+    samplerOptions.normalized = false;
+    samplerOptions.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    this->_iterationCounts.sampler = Sampler(app, samplerOptions);
+  }
+
+  // Fractal texture
+  {
+    ImageOptions imageOptions{};
+    imageOptions.format = VK_FORMAT_R32_SFLOAT;
+    imageOptions.width = extent.width;
+    imageOptions.height = extent.height;
+    imageOptions.usage =
+        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    this->_fractalTexture.image = Image(app, imageOptions);
+
+    ImageViewOptions viewOptions{};
+    viewOptions.format = imageOptions.format;
+    this->_fractalTexture.view =
+        ImageView(app, this->_fractalTexture.image, viewOptions);
+
+    this->_fractalTexture.sampler = Sampler(app, {});
+  }
 
   // Velocity field texture
   {
@@ -142,6 +182,39 @@ Simulation::Simulation(
   }
 
   // Create compute passes
+
+  // Fractal pass
+  {
+    // Build material
+    DescriptorSetLayoutBuilder layoutBuilder{};
+    layoutBuilder
+        // Fractal iteration counts
+        .addStorageImageBinding()
+        // Fractal texture
+        .addStorageImageBinding();
+
+    this->_pFractalMaterialAllocator =
+        std::make_unique<DescriptorSetAllocator>(app, layoutBuilder, 1);
+    this->_pFractalMaterial = std::make_unique<DescriptorSet>(
+        this->_pFractalMaterialAllocator->allocate());
+    this->_pFractalMaterial->assign()
+        .bindStorageImage(
+            this->_iterationCounts.view,
+            this->_iterationCounts.sampler)
+        .bindStorageImage(
+            this->_fractalTexture.view,
+            this->_fractalTexture.sampler);
+
+    // Build pipeine
+    ComputePipelineBuilder builder{};
+    builder.setComputeShader(GProjectDirectory + "/Shaders/Mandelbrot.comp");
+    builder.layoutBuilder
+        .addDescriptorSet(this->_pFractalMaterialAllocator->getLayout())
+        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+
+    this->_pFractalPass =
+        std::make_unique<ComputePipeline>(app, std::move(builder));
+  }
 
   // Velocity advection pass
   {
@@ -385,11 +458,50 @@ void Simulation::update(
   constants.density = 0.5f;
   constants.vorticity = 0.5f;
   constants.clear = this->clear;
+  constants.zoom = this->zoom;
+  constants.offset = this->offset;
 
   this->clear = false;
 
   uint32_t groupCountX = (extent.width - 1) / 16 + 1;
   uint32_t groupCountY = (extent.height - 1) / 16 + 1;
+
+  // Update fractal pass
+  if (this->zoom != this->_lastZoom || this->offset != this->_lastOffset) {
+    this->_lastZoom = this->zoom;
+    this->_lastOffset = this->_lastOffset;
+
+    this->_iterationCounts.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+    this->_fractalTexture.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    this->_pFractalPass->bindPipeline(commandBuffer);
+    VkDescriptorSet material = this->_pFractalMaterial->getVkDescriptorSet();
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        this->_pFractalPass->getLayout(),
+        0,
+        1,
+        &material,
+        0,
+        nullptr);
+    vkCmdPushConstants(
+        commandBuffer,
+        this->_pFractalPass->getLayout(),
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        sizeof(SimulationConstants),
+        &constants);
+    vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
+  }
 
   // Advect velocity pass
   {
@@ -623,6 +735,16 @@ void Simulation::update(
   }
 
   // Transition resources for visualizing in fragment shader
+  this->_iterationCounts.image.transitionLayout(
+      commandBuffer,
+      VK_IMAGE_LAYOUT_GENERAL,
+      VK_ACCESS_SHADER_READ_BIT,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+  this->_fractalTexture.image.transitionLayout(
+      commandBuffer,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      VK_ACCESS_SHADER_READ_BIT,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
   this->_pressureFieldA.image.transitionLayout(
       commandBuffer,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

@@ -1,0 +1,59 @@
+
+#version 450
+
+#include "Fractals.glsl"
+
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(set=0, binding=0) uniform writeonly iimage2D iterationCounts;
+layout(set=0, binding=1) uniform writeonly image2D fractalImage;
+
+layout(push_constant) uniform PushConstants {
+  int width;
+  int height;
+  float time;
+  float dt;
+  float sorOmega;
+  float density;
+  float vorticity;
+  bool clear;
+  vec2 offset;
+  float zoom;
+} pushConstants;
+
+void main() {
+  ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
+  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
+      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+    return;
+  }
+  
+  float h = max(1.0 / pushConstants.width, 1.0 / pushConstants.height);
+
+  vec2 c = (
+      2.0 * vec2(texelPos) * h 
+      - vec2(1.0)) / pushConstants.zoom
+      + pushConstants.offset;
+
+  const int FRACTAL_ITERS = 10000;
+  int i = 0;
+  vec2 zn = c;
+  float magSq;
+  for (; i < FRACTAL_ITERS; ++i) {
+    zn = vec2(zn.x * zn.x - zn.y * zn.y + c.x, 2.0 * zn.x * zn.y + c.y);
+    magSq = dot(zn, zn);
+    if (magSq > 4.0) {
+      break;
+    }
+  }
+
+  float mag = sqrt(magSq);
+
+  float color = (float(i + 1) - log(log2(mag))) / float(FRACTAL_ITERS);
+
+  imageStore(iterationCounts, texelPos, ivec4(i, 0, 0, 1));
+  imageStore(fractalImage, texelPos, vec4(color, 0.0, 0.0, 1.0));
+}
+
+
+
+

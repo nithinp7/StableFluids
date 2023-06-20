@@ -1,6 +1,8 @@
 
 #version 450
 
+#include "Fractals.glsl"
+
 layout(local_size_x = 16, local_size_y = 16) in;
 layout(set=0, binding=0, rg16f) uniform readonly image2D advectedVelocityField;
 layout(set=0, binding=1) uniform writeonly image2D divergenceField;
@@ -14,6 +16,8 @@ layout(push_constant) uniform PushConstants {
   float density;
   float vorticity;
   bool clear;
+  vec2 offset;
+  float zoom;
 } pushConstants;
 
 vec2 loadVel(ivec2 pos) {
@@ -51,6 +55,22 @@ void main() {
   vec2 vD = loadVel(texelPos + ivec2(0, -1));
 
   float div = 0.5 / h * (vR.x - vL.x + vU.y - vD.y);
+
+  // // if (texelPos.x < 20 && texelPos.y < 20) {div = 50.0;}
+
+  // // TODO: Correct for aspect ratio
+  // float zoom = 12.0 ;//+ pushConstants.time * 2.0;
+  // vec2 offs = vec2(-0.706835, 0.235839);//
+  // vec2 c = (
+  //     2.0 * vec2(texelPos) * h 
+  //     - vec2(1.0)) / zoom
+  //     + offs;
+  // float f = mandelbrot(c);
+
+  // if (f < 1.0 && f > 0.6) {
+  //   f *= f * (1.0 - f) * (1.0 - f);
+  //   div = -1.0;//5.0 * f;
+  // }
 
   if (pushConstants.clear) {
     div = 0.0;

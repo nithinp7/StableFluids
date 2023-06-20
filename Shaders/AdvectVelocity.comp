@@ -14,6 +14,8 @@ layout(push_constant) uniform PushConstants {
   float density;
   float vorticity;
   bool clear;
+  vec2 offset;
+  float zoom;
 } pushConstants;
 
 vec2 sampleVel(vec2 uv) {
@@ -45,7 +47,7 @@ void main() {
 
   // TODO: Introduce temperature and buoyancy
   // 
-  const int ADV_STEPS = 1;
+  const int ADV_STEPS = 4;
   vec2 vel = sampleVel(texelUv);
   vec2 srcVel = vel;
   vec2 srcUv = texelUv;
@@ -55,7 +57,7 @@ void main() {
     srcVel = sampleVel(srcUv);
     // For testing...
     if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && pushConstants.clear) {
-      srcVel += vec2(10.0, 0.0) * pushConstants.dt;
+      srcVel += vec2(2.0, 0.0) * pushConstants.dt;
     }
   }
 

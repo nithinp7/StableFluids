@@ -1,6 +1,8 @@
 
 #version 450
 
+#include "Fractals.glsl"
+
 layout(local_size_x = 16, local_size_y = 16) in;
 layout(set=0, binding=0, r16f) uniform readonly image2D divergenceField;
 layout(set=0, binding=1, r16f) uniform readonly image2D prevPressureField;
@@ -15,9 +17,30 @@ layout(push_constant) uniform PushConstants {
   float density;
   float vorticity;
   bool clear;
+  vec2 offset;
+  float zoom;
 } pushConstants;
 
 float loadP(ivec2 pos) {
+  // TODO: Correct for aspect ratio
+  // float zoom = 4.0 + pushConstants.time * 2.0;
+  // vec2 offs = vec2(-0.706835, 0.235839);//
+  // vec2 c = (
+  //     2.0 * vec2(pos) / float(pushConstants.width)
+  //     - vec2(1.0)) / zoom
+  //     + offs;
+  // float f = mandelbrot(c);
+  
+  // if (f < 1.0 && f > 0.5) {
+  //   return -0.001;
+  // }
+  // if (fractal == 1.0) {
+  //   return 0.001;
+  // }
+  // if (pos.x < 20 && pos.y < 20) {
+  //   return -0.001;
+  // }
+  
   pos.x = 
       (pos.x < pushConstants.width) ? 
         (pos.x < 0) ? 

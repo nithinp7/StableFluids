@@ -1,6 +1,8 @@
 
 #version 450
 
+#include "Fractals.glsl"
+
 layout(local_size_x = 16, local_size_y = 16) in;
 layout(set=0, binding=0) uniform sampler2D velocityField;
 layout(set=0, binding=1) uniform sampler2D colorField;
@@ -15,6 +17,8 @@ layout(push_constant) uniform PushConstants {
   float density;
   float vorticity;
   bool clear;
+  vec2 offset;
+  float zoom;
 } pushConstants;
 
 vec2 sampleVel(vec2 uv) {
@@ -31,12 +35,56 @@ vec2 sampleVel(vec2 uv) {
   return sn * v;
 }
 
+vec3 sampleColor(vec2 uv) {
+  /*
+  // TODO: Correct for aspect ratio
+  // float zoom = 12.0 ;//+ pushConstants.time * 2.0;
+  // vec2 offs = vec2(-0.706835, 0.235839);//
+  vec2 c = (
+      2.0 * uv / vec2(1.0, float(pushConstants.width) / float(pushConstants.height)) 
+      - vec2(1.0)) / pushConstants.zoom
+      + pushConstants.offset;
+  float f = mandelbrot(c);
+  vec2 g = gradMandelbrot(c, 1.0 / float(pushConstants.height));
+  // if (f < 1.0) {
+  //   return vec3(f, 0.1 * (1.0 - f), fract(10.0 * f));//vec3(fract(pushConstants.time), 0.0, 1.0);
+  // }
+  // if (f < 1.0 && f > 0.4) {
+  //   f = 5.0 * pow(1.0 - f, 2.0);
+  // } else {
+  //   f = 1.0 - 0.2 * f * f * f * f;
+  // }
+  // f *= f * (1.0 - f) * (1.0 - f);
+  // float f = 1.0;
+  // if (length(g) > 100000000.0) {
+  //   f = 1.5;
+  // }
+  f *= f * (1.0 - f) * (1.0 - f);
+*/
+  // vec3 m = vec3(f, 1.0 - f, 1.0);
+  // const float exposure = 0.01;
+  // g = vec2(1.0) - exp(-g * exposure);
+  vec3 txSample = texture(colorField, uv).rgb;
+
+  // if (length(g) > 0.999999) {
+    // Un-gamma correct
+    // txSample /= (vec3(1.0) - txSample);
+    // txSample += 0.01 * vec3(cos(10.0 * f), sin(23. * f), f);
+    // Gamma correct
+    // txSample /= (vec3(1.0) + txSample);
+  // } else {
+  //   txSample -= vec3(f);
+  // }
+
+  return txSample; 
+}
+
 vec2 colorGrad(vec2 uv, vec2 cellDims, float h) {
   // Calculate color gradient at destination
-  vec3 cR = texture(colorField, uv + vec2(cellDims.x, 0.0)).rgb;
-  vec3 cL = texture(colorField, uv + vec2(-cellDims.x, 0.0)).rgb;
-  vec3 cU = texture(colorField, uv + vec2(0.0, cellDims.y)).rgb;
-  vec3 cD = texture(colorField, uv + vec2(0.0, -cellDims.y)).rgb;
+  vec3 cR = sampleColor(uv + vec2(cellDims.x, 0.0)).rgb;
+  vec3 cL = sampleColor(uv + vec2(-cellDims.x, 0.0)).rgb;
+  vec3 cU = sampleColor(uv + vec2(0.0, cellDims.y)).rgb;
+  vec3 cD = sampleColor(uv + vec2(0.0, -cellDims.y)).rgb;
 
   return 0.5 * vec2(length(cR - cL), length(cU - cD)) / h;
 }
@@ -53,7 +101,7 @@ void main() {
   vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * cellDims;
   float h = max(cellDims.x, cellDims.y);
 
-  const int COLOR_ADV_STEPS = 12;
+  const int COLOR_ADV_STEPS = 4;
   float dt = pushConstants.dt / float(COLOR_ADV_STEPS);
 
   // Integrate backwards through velocity field
@@ -61,11 +109,12 @@ void main() {
     vec2 colGradMag = colorGrad(texelUv, cellDims, h);
     vec2 vel = sampleVel(texelUv);
     // Reject the portion of the velocity along the color gradient
-    vel -= vel * min(dot(vel, colGradMag), 0.0);
+    // vel -= vel * min(dot(vel, colGradMag), 0.0);
     texelUv -= vel * cellDims / h * dt;
   }
 
-  vec4 srcColor = texture(colorField, texelUv);
+  // vec4 srcColor = texture(colorField, texelUv);
+  vec4 srcColor = vec4(sampleColor(texelUv), 1.0);
 
   if (pushConstants.clear) {
     srcColor = vec4(0.0, 0.0, 0.0, 1.0);

@@ -14,6 +14,8 @@ layout(push_constant) uniform PushConstants {
   float density;
   float vorticity;
   bool clear;
+  vec2 offset;
+  float zoom;
 } pushConstants;
 
 void main() {
@@ -25,19 +27,19 @@ void main() {
 
   vec4 color = imageLoad(src, texelPos);
 
-  if (pushConstants.clear) {
-    ivec2 t = ((ivec2(50) + texelPos) / 100) % 2;
-    int sum = t.x + t.y;
-    if (sum == 0) {
-      color = vec4(1.0, 0.0, 0.0, 1.0);
-    } else if (sum == 1) {
-      color = vec4(1.0, 1.0, 0.0, 1.0);
-      // color = vec4(10.0, 10.0, 0.0, 1.0);
-    } else {
-      color = vec4(0.0, 0.0, 1.0, 1.0);
-      // color = vec4(0.5, 0.25, 0.9, 1.0);
-    }
-  }
+  // if (pushConstants.clear) {
+  //   ivec2 t = ((ivec2(50) + texelPos) / 100) % 2;
+  //   int sum = t.x + t.y;
+  //   if (sum == 0) {
+  //     color = vec4(1.0, 0.0, 0.0, 1.0);
+  //   } else if (sum == 1) {
+  //     color = vec4(1.0, 1.0, 0.0, 1.0);
+  //     // color = vec4(10.0, 10.0, 0.0, 1.0);
+  //   } else {
+  //     color = vec4(0.0, 0.0, 1.0, 1.0);
+  //     // color = vec4(0.5, 0.25, 0.9, 1.0);
+  //   }
+  // }
 
   vec2 uvScale = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
   vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;

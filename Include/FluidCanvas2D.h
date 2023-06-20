@@ -33,7 +33,7 @@ class Application;
 namespace StableFluids {
 
 struct GlobalUniforms {
-  glm::vec4 debug;
+  float time;
 };
 
 struct SimResources {
