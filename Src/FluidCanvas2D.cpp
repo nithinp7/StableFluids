@@ -54,10 +54,34 @@ void FluidCanvas2D::initGame(Application& app) {
 
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_W, GLFW_PRESS, 0},
-      [&app, that = this]() { that->_pSimulation->zoom *= 2.0f; });
+      [&app, that = this]() {
+        that->_pSimulation->offset.y -= 0.25 / that->_pSimulation->zoom;
+      });
 
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_S, GLFW_PRESS, 0},
+      [&app, that = this]() {
+        that->_pSimulation->offset.y += 0.25 / that->_pSimulation->zoom;
+      });
+
+  app.getInputManager().addKeyBinding(
+      {GLFW_KEY_A, GLFW_PRESS, 0},
+      [&app, that = this]() {
+        that->_pSimulation->offset.x -= 0.25 / that->_pSimulation->zoom;
+      });
+
+  app.getInputManager().addKeyBinding(
+      {GLFW_KEY_D, GLFW_PRESS, 0},
+      [&app, that = this]() {
+        that->_pSimulation->offset.x += 0.25 / that->_pSimulation->zoom;
+      });
+
+  app.getInputManager().addKeyBinding(
+      {GLFW_KEY_E, GLFW_PRESS, 0},
+      [&app, that = this]() { that->_pSimulation->zoom *= 2.0f; });
+
+  app.getInputManager().addKeyBinding(
+      {GLFW_KEY_Q, GLFW_PRESS, 0},
       [&app, that = this]() { that->_pSimulation->zoom *= 0.5f; });
 }
 
