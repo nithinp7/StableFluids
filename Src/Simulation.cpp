@@ -382,6 +382,8 @@ Simulation::Simulation(
     // Build material
     DescriptorSetLayoutBuilder layoutBuilder{};
     layoutBuilder
+        // Fractal texture
+        .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
         // Velocity field
         .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
         // Previous color field
@@ -394,6 +396,9 @@ Simulation::Simulation(
     this->_pAdvectColorMaterial = std::make_unique<DescriptorSet>(
         this->_pAdvectColorMaterialAllocator->allocate());
     this->_pAdvectColorMaterial->assign()
+        .bindTextureDescriptor(
+            this->_fractalTexture.view,
+            this->_fractalTexture.sampler)
         .bindTextureDescriptor(
             this->_velocityField.view,
             this->_velocityField.sampler)
@@ -661,6 +666,11 @@ void Simulation::update(
 
   // Advect color field
   {
+    this->_fractalTexture.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
     this->_velocityField.image.transitionLayout(
         commandBuffer,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

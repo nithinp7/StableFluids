@@ -39,7 +39,8 @@ void main() {
   vec2 zn = c;
   float magSq;
   for (; i < FRACTAL_ITERS; ++i) {
-    zn = vec2(zn.x * zn.x - zn.y * zn.y + c.x, 2.0 * zn.x * zn.y + c.y);
+    vec2 z2 = vec2(zn.x * zn.x - zn.y * zn.y, 2.0 * zn.x * zn.y);
+    zn = z2 + c;
     magSq = dot(zn, zn);
     if (magSq > 4.0) {
       break;
