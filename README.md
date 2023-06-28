@@ -9,3 +9,6 @@ This is a 2D incompressible fluid simulation based on "Stable Fluids" by Jos Sta
 
 ##### Slow advection of color dye in incompressible fluid.
 <img src="https://github.com/nithinp7/StableFluids/blob/main/Screenshots/CheckerBoardSlow.gif" w=900px>
+
+##### The Mandelbrot Set fractal being used as an ink-source.
+<img src="https://github.com/nithinp7/StableFluids/blob/main/Screenshots/Mandelbrot.gif" w=500px>
