@@ -46,6 +46,8 @@ void FluidCanvas2D::initGame(Application& app) {
             }
           }
         }
+
+        that->_pSimulation->tryRecompileShaders(app);
       });
 
   app.getInputManager().addKeyBinding(
@@ -138,7 +140,7 @@ void FluidCanvas2D::_createGlobalResources(
     this->_pGlobalResources =
         std::make_unique<PerFrameResources>(app, globalResourceLayout);
     this->_pGlobalUniforms =
-        std::make_unique<TransientUniforms<GlobalUniforms>>(app, commandBuffer);
+        std::make_unique<TransientUniforms<GlobalUniforms>>(app);
 
     ResourcesAssignment assignment = this->_pGlobalResources->assign();
 

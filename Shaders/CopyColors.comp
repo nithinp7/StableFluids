@@ -1,33 +1,22 @@
 
 #version 450
 
-layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=0, binding=0, rgba8) uniform readonly image2D src;
-layout(set=0, binding=1) uniform writeonly image2D dest;
+#include "SimulationUniforms.glsl"
 
-layout(push_constant) uniform PushConstants {
-  int width;
-  int height;
-  float time;
-  float dt;
-  float sorOmega;
-  float density;
-  float vorticity;
-  bool clear;
-  vec2 offset;
-  float zoom;
-} pushConstants;
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(set=1, binding=0, rgba32f) uniform readonly image2D src;
+layout(set=1, binding=1) uniform writeonly image2D dest;
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
-      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
+      texelPos.y < 0 || texelPos.y >= simulation.height) {
     return;
   }
 
   vec4 color = imageLoad(src, texelPos);
 
-  // if (pushConstants.clear) {
+  // if (simulation.clear) {
   //   ivec2 t = ((ivec2(50) + texelPos) / 100) % 2;
   //   int sum = t.x + t.y;
   //   if (sum == 0) {
@@ -41,13 +30,13 @@ void main() {
   //   }
   // }
 
-  vec2 uvScale = vec2(1.0) / vec2(pushConstants.width, pushConstants.height);
+  vec2 uvScale = vec2(1.0) / vec2(simulation.width, simulation.height);
   vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
 
-  if (texelUv.x <= 0.01 && texelUv.y > 0.499 && texelUv.y < 0.501) {// && pushConstants.clear) {
-    // float f = sin(pushConstants.time);
-    // color = vec4(1.0, f, 0.0, 1.0);
-  }
+  // if (texelUv.x <= 0.01 && texelUv.y > 0.499 && texelUv.y < 0.501) {// && simulation.clear) {
+  //   // float f = sin(simulation.time);
+  //   // color = vec4(1.0, f, 0.0, 1.0);
+  // }
 
   imageStore(dest, texelPos, color);
 }

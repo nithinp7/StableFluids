@@ -3,22 +3,9 @@
 #include <cassert>
 #include <cstdint>
 
-using namespace AltheaEngine;
+#include <iostream>
 
-namespace {
-struct SimulationConstants {
-  int width;
-  int height;
-  float time;
-  float dt;
-  float sorOmega;
-  float density;
-  float vorticity;
-  bool clear;
-  alignas(8) glm::vec2 offset;
-  float zoom;
-};
-} // namespace
+using namespace AltheaEngine;
 
 namespace StableFluids {
 
@@ -27,6 +14,16 @@ Simulation::Simulation(
     SingleTimeCommandBuffer& commandBuffer) {
   const VkExtent2D& extent = app.getSwapChainExtent();
 
+  // Simulation uniforms
+  {
+    this->_pSimulationUniforms = std::make_unique<TransientUniforms<SimulationUniforms>>(app);
+    
+    DescriptorSetLayoutBuilder builder{};
+    builder.addUniformBufferBinding(VK_SHADER_STAGE_COMPUTE_BIT);
+
+    this->_pSimulationResources = std::make_unique<PerFrameResources>(app, builder);
+    this->_pSimulationResources->assign().bindTransientUniforms(*this->_pSimulationUniforms);
+  }
   // Create texture resources
 
   // TODO: More efficient texture formats? Where can we afford less precision?
@@ -155,14 +152,14 @@ Simulation::Simulation(
   // Color field textures
   {
     ImageOptions imageOptions{};
-    imageOptions.format = VK_FORMAT_R8G8B8A8_UNORM;
+    imageOptions.format = VK_FORMAT_R32G32B32A32_SFLOAT;
     imageOptions.width = extent.width;
     imageOptions.height = extent.height;
     imageOptions.usage =
         VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
     ImageViewOptions viewOptions{};
-    viewOptions.format = VK_FORMAT_R8G8B8A8_UNORM;
+    viewOptions.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
     SamplerOptions samplerOptions{};
     samplerOptions.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
@@ -209,8 +206,8 @@ Simulation::Simulation(
     ComputePipelineBuilder builder{};
     builder.setComputeShader(GProjectDirectory + "/Shaders/Mandelbrot.comp");
     builder.layoutBuilder
-        .addDescriptorSet(this->_pFractalMaterialAllocator->getLayout())
-        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+        .addDescriptorSet(this->_pSimulationResources->getLayout())
+        .addDescriptorSet(this->_pFractalMaterialAllocator->getLayout());
 
     this->_pFractalPass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
@@ -243,8 +240,8 @@ Simulation::Simulation(
     builder.setComputeShader(
         GProjectDirectory + "/Shaders/AdvectVelocity.comp");
     builder.layoutBuilder
-        .addDescriptorSet(this->_pAdvectMaterialAllocator->getLayout())
-        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+        .addDescriptorSet(this->_pSimulationResources->getLayout())
+        .addDescriptorSet(this->_pAdvectMaterialAllocator->getLayout());
 
     this->_pAdvectPass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
@@ -277,8 +274,8 @@ Simulation::Simulation(
     builder.setComputeShader(
         GProjectDirectory + "/Shaders/CalculateDivergence.comp");
     builder.layoutBuilder
-        .addDescriptorSet(this->_pDivergenceMaterialAllocator->getLayout())
-        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+        .addDescriptorSet(this->_pSimulationResources->getLayout())
+        .addDescriptorSet(this->_pDivergenceMaterialAllocator->getLayout());
 
     this->_pDivergencePass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
@@ -331,8 +328,8 @@ Simulation::Simulation(
     builder.setComputeShader(
         GProjectDirectory + "/Shaders/CalculatePressure.comp");
     builder.layoutBuilder
-        .addDescriptorSet(this->_pPressureMaterialAllocator->getLayout())
-        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+        .addDescriptorSet(this->_pSimulationResources->getLayout())
+        .addDescriptorSet(this->_pPressureMaterialAllocator->getLayout());
 
     this->_pPressurePass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
@@ -370,8 +367,8 @@ Simulation::Simulation(
     builder.setComputeShader(
         GProjectDirectory + "/Shaders/UpdateVelocity.comp");
     builder.layoutBuilder
-        .addDescriptorSet(this->_pUpdateMaterialAllocator->getLayout())
-        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+        .addDescriptorSet(this->_pSimulationResources->getLayout())
+        .addDescriptorSet(this->_pUpdateMaterialAllocator->getLayout());
 
     this->_pUpdateVelocityPass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
@@ -411,8 +408,8 @@ Simulation::Simulation(
     ComputePipelineBuilder builder{};
     builder.setComputeShader(GProjectDirectory + "/Shaders/AdvectColor.comp");
     builder.layoutBuilder
-        .addDescriptorSet(this->_pAdvectColorMaterialAllocator->getLayout())
-        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+        .addDescriptorSet(this->_pSimulationResources->getLayout())
+        .addDescriptorSet(this->_pAdvectColorMaterialAllocator->getLayout());
 
     this->_pAdvectColorPass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
@@ -440,12 +437,54 @@ Simulation::Simulation(
     ComputePipelineBuilder builder{};
     builder.setComputeShader(GProjectDirectory + "/Shaders/CopyColors.comp");
     builder.layoutBuilder
-        .addDescriptorSet(this->_pUpdateColorMaterialAllocator->getLayout())
-        .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+        .addDescriptorSet(this->_pSimulationResources->getLayout())
+        .addDescriptorSet(this->_pUpdateColorMaterialAllocator->getLayout());
 
     this->_pUpdateColorPass =
         std::make_unique<ComputePipeline>(app, std::move(builder));
   }
+
+  // Particle update pass
+  // {
+    
+  //   // Build material
+  //   DescriptorSetLayoutBuilder layoutBuilder{};
+  //   layoutBuilder
+  //       // Particle positions
+  //       .addStorageBufferBinding(VK_SHADER_STAGE_COMPUTE_BIT)
+  //       // Velocity field
+  //       .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
+  //       // Previous color field
+  //       .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
+  //       // Advected color field
+  //       .addStorageImageBinding();
+
+  //   this->_pAdvectColorMaterialAllocator =
+  //       std::make_unique<DescriptorSetAllocator>(app, layoutBuilder, 1);
+  //   this->_pAdvectColorMaterial = std::make_unique<DescriptorSet>(
+  //       this->_pAdvectColorMaterialAllocator->allocate());
+  //   this->_pAdvectColorMaterial->assign()
+  //       .bindTextureDescriptor(
+  //           this->_fractalTexture.view,
+  //           this->_fractalTexture.sampler)
+  //       .bindTextureDescriptor(
+  //           this->_velocityField.view,
+  //           this->_velocityField.sampler)
+  //       .bindTextureDescriptor(
+  //           this->_colorFieldA.view,
+  //           this->_colorFieldA.sampler)
+  //       .bindStorageImage(this->_colorFieldB.view, this->_colorFieldB.sampler);
+
+  //   // Build pipeine
+  //   ComputePipelineBuilder builder{};
+  //   builder.setComputeShader(GProjectDirectory + "/Shaders/AdvectColor.comp");
+  //   builder.layoutBuilder
+  //       .addDescriptorSet(this->_pAdvectColorMaterialAllocator->getLayout())
+  //       .addPushConstants<SimulationConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
+
+  //   this->_pAdvectColorPass =
+  //       std::make_unique<ComputePipeline>(app, std::move(builder));
+  // }
 }
 
 void Simulation::update(
@@ -454,27 +493,36 @@ void Simulation::update(
     const FrameContext& frame) {
   const VkExtent2D& extent = app.getSwapChainExtent();
 
-  SimulationConstants constants{};
-  constants.width = static_cast<int>(extent.width);
-  constants.height = static_cast<int>(extent.height);
-  constants.time = static_cast<float>(frame.currentTime);
-  constants.dt = frame.deltaTime;
-  constants.sorOmega = 1.f;
-  constants.density = 0.5f;
-  constants.vorticity = 0.5f;
-  constants.clear = this->clear;
-  constants.zoom = this->zoom;
-  constants.offset = this->offset;
+  SimulationUniforms uniforms{};
+  uniforms.width = static_cast<int>(extent.width);
+  uniforms.height = static_cast<int>(extent.height);
+  uniforms.time = static_cast<float>(frame.currentTime);
+  uniforms.dt = frame.deltaTime;
+  uniforms.sorOmega = 1.f;
+  uniforms.density = 0.5f;
+  uniforms.vorticity = 0.5f;
+  uniforms.clear = this->clear;
+  uniforms.zoom = this->zoom;
+  uniforms.lastZoom = this->_lastZoom;
+  uniforms.offsetX = this->offset.x;
+  uniforms.offsetY = this->offset.y;
+  uniforms.lastOffsetX = this->_lastOffset.x;
+  uniforms.lastOffsetY = this->_lastOffset.y;
+
+  this->_pSimulationUniforms->updateUniforms(uniforms, frame);
 
   this->clear = false;
 
   uint32_t groupCountX = (extent.width - 1) / 16 + 1;
   uint32_t groupCountY = (extent.height - 1) / 16 + 1;
 
+  VkDescriptorSet materials[2];
+  materials[0] = this->_pSimulationResources->getCurrentDescriptorSet(frame);
+
   // Update fractal pass
   if (this->zoom != this->_lastZoom || this->offset != this->_lastOffset) {
     this->_lastZoom = this->zoom;
-    this->_lastOffset = this->_lastOffset;
+    this->_lastOffset = this->offset;
 
     this->_iterationCounts.image.transitionLayout(
         commandBuffer,
@@ -488,23 +536,16 @@ void Simulation::update(
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
     this->_pFractalPass->bindPipeline(commandBuffer);
-    VkDescriptorSet material = this->_pFractalMaterial->getVkDescriptorSet();
+    materials[1] = this->_pFractalMaterial->getVkDescriptorSet();
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_COMPUTE,
         this->_pFractalPass->getLayout(),
         0,
-        1,
-        &material,
+        2,
+        materials,
         0,
         nullptr);
-    vkCmdPushConstants(
-        commandBuffer,
-        this->_pFractalPass->getLayout(),
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SimulationConstants),
-        &constants);
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
   }
 
@@ -522,23 +563,16 @@ void Simulation::update(
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
     this->_pAdvectPass->bindPipeline(commandBuffer);
-    VkDescriptorSet material = this->_pAdvectMaterial->getVkDescriptorSet();
+    materials[1] = this->_pAdvectMaterial->getVkDescriptorSet();
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_COMPUTE,
         this->_pAdvectPass->getLayout(),
         0,
-        1,
-        &material,
+        2,
+        materials,
         0,
         nullptr);
-    vkCmdPushConstants(
-        commandBuffer,
-        this->_pAdvectPass->getLayout(),
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SimulationConstants),
-        &constants);
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
   }
 
@@ -556,36 +590,22 @@ void Simulation::update(
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
     this->_pDivergencePass->bindPipeline(commandBuffer);
-    VkDescriptorSet material = this->_pDivergenceMaterial->getVkDescriptorSet();
+    materials[1] = this->_pDivergenceMaterial->getVkDescriptorSet();
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_COMPUTE,
         this->_pDivergencePass->getLayout(),
         0,
-        1,
-        &material,
+        2,
+        materials,
         0,
         nullptr);
-    vkCmdPushConstants(
-        commandBuffer,
-        this->_pDivergencePass->getLayout(),
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SimulationConstants),
-        &constants);
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
   }
 
   // Calculate pressure passes
   {
     this->_pPressurePass->bindPipeline(commandBuffer);
-    vkCmdPushConstants(
-        commandBuffer,
-        this->_pPressurePass->getLayout(),
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SimulationConstants),
-        &constants);
 
     this->_divergenceField.image.transitionLayout(
         commandBuffer,
@@ -612,7 +632,7 @@ void Simulation::update(
           phase ? VK_ACCESS_SHADER_READ_BIT : VK_ACCESS_SHADER_WRITE_BIT,
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-      VkDescriptorSet material =
+      materials[1] =
           phase ? this->_pPressureMaterialB->getVkDescriptorSet()
                 : this->_pPressureMaterialA->getVkDescriptorSet();
       vkCmdBindDescriptorSets(
@@ -620,8 +640,8 @@ void Simulation::update(
           VK_PIPELINE_BIND_POINT_COMPUTE,
           this->_pPressurePass->getLayout(),
           0,
-          1,
-          &material,
+          2,
+          materials,
           0,
           nullptr);
       vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
@@ -644,23 +664,16 @@ void Simulation::update(
     // for reading by this point.
 
     this->_pUpdateVelocityPass->bindPipeline(commandBuffer);
-    VkDescriptorSet material = this->_pUpdateMaterial->getVkDescriptorSet();
+    materials[1] = this->_pUpdateMaterial->getVkDescriptorSet();
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_COMPUTE,
         this->_pUpdateVelocityPass->getLayout(),
         0,
-        1,
-        &material,
+        2,
+        materials,
         0,
         nullptr);
-    vkCmdPushConstants(
-        commandBuffer,
-        this->_pUpdateVelocityPass->getLayout(),
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SimulationConstants),
-        &constants);
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
   }
 
@@ -688,24 +701,16 @@ void Simulation::update(
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
     this->_pAdvectColorPass->bindPipeline(commandBuffer);
-    VkDescriptorSet material =
-        this->_pAdvectColorMaterial->getVkDescriptorSet();
+    materials[1] = this->_pAdvectColorMaterial->getVkDescriptorSet();
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_COMPUTE,
         this->_pAdvectColorPass->getLayout(),
         0,
-        1,
-        &material,
+        2,
+        materials,
         0,
         nullptr);
-    vkCmdPushConstants(
-        commandBuffer,
-        this->_pAdvectColorPass->getLayout(),
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SimulationConstants),
-        &constants);
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
   }
 
@@ -723,24 +728,16 @@ void Simulation::update(
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
     this->_pUpdateColorPass->bindPipeline(commandBuffer);
-    VkDescriptorSet material =
-        this->_pUpdateColorMaterial->getVkDescriptorSet();
+    materials[1] = this->_pUpdateColorMaterial->getVkDescriptorSet();
     vkCmdBindDescriptorSets(
         commandBuffer,
         VK_PIPELINE_BIND_POINT_COMPUTE,
         this->_pUpdateColorPass->getLayout(),
         0,
-        1,
-        &material,
+        2,
+        materials,
         0,
         nullptr);
-    vkCmdPushConstants(
-        commandBuffer,
-        this->_pUpdateColorPass->getLayout(),
-        VK_SHADER_STAGE_COMPUTE_BIT,
-        0,
-        sizeof(SimulationConstants),
-        &constants);
     vkCmdDispatch(commandBuffer, groupCountX, groupCountY, 1);
   }
 
@@ -775,5 +772,79 @@ void Simulation::update(
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       VK_ACCESS_SHADER_READ_BIT,
       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+}
+
+void Simulation::tryRecompileShaders(Application& app) {
+  if (this->_pFractalPass->recompileStaleShaders()) {
+    if (this->_pFractalPass->hasShaderRecompileErrors()) {
+      std::cout << this->_pFractalPass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pFractalPass->recreatePipeline(app);
+    }
+  }
+
+   if (this->_pAdvectPass->recompileStaleShaders()) {
+    if (this->_pAdvectPass->hasShaderRecompileErrors()) {
+      std::cout << this->_pAdvectPass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pAdvectPass->recreatePipeline(app);
+    }
+  }
+
+   if (this->_pFractalPass->recompileStaleShaders()) {
+    if (this->_pFractalPass->hasShaderRecompileErrors()) {
+      std::cout << this->_pFractalPass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pFractalPass->recreatePipeline(app);
+    }
+  }
+
+   if (this->_pDivergencePass->recompileStaleShaders()) {
+    if (this->_pDivergencePass->hasShaderRecompileErrors()) {
+      std::cout << this->_pDivergencePass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pDivergencePass->recreatePipeline(app);
+    }
+  }
+
+   if (this->_pPressurePass->recompileStaleShaders()) {
+    if (this->_pPressurePass->hasShaderRecompileErrors()) {
+      std::cout << this->_pPressurePass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pPressurePass->recreatePipeline(app);
+    }
+  }
+
+   if (this->_pUpdateVelocityPass->recompileStaleShaders()) {
+    if (this->_pUpdateVelocityPass->hasShaderRecompileErrors()) {
+      std::cout << this->_pUpdateVelocityPass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pUpdateVelocityPass->recreatePipeline(app);
+    }
+  }
+
+   if (this->_pAdvectColorPass->recompileStaleShaders()) {
+    if (this->_pAdvectColorPass->hasShaderRecompileErrors()) {
+      std::cout << this->_pAdvectColorPass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pAdvectColorPass->recreatePipeline(app);
+    }
+  }
+  
+   if (this->_pUpdateColorPass->recompileStaleShaders()) {
+    if (this->_pUpdateColorPass->hasShaderRecompileErrors()) {
+      std::cout << this->_pUpdateColorPass->getShaderRecompileErrors() << "\n";
+    } else {
+      this->_pUpdateColorPass->recreatePipeline(app);
+    }
+  }
+
+  // if (this->_pUpdateParticlesPass->recompileStaleShaders()) {
+  //   if (this->_pUpdateParticlesPass->hasShaderRecompileErrors()) {
+  //     std::cout << this->_pUpdateParticlesPass->getShaderRecompileErrors() << "\n";
+  //   } else {
+  //     this->_pUpdateParticlesPass->recreatePipeline(app);
+  //   }
+  // }
 }
 } // namespace StableFluids

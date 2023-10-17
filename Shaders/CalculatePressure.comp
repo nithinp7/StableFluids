@@ -1,32 +1,20 @@
 
 #version 450
 
+#include "SimulationUniforms.glsl"
 #include "Fractals.glsl"
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=0, binding=0, r16f) uniform readonly image2D divergenceField;
-layout(set=0, binding=1, r16f) uniform readonly image2D prevPressureField;
-layout(set=0, binding=2) uniform writeonly image2D pressureField;
-
-layout(push_constant) uniform PushConstants {
-  int width;
-  int height;
-  float time;
-  float dt;
-  float sorOmega;
-  float density;
-  float vorticity;
-  bool clear;
-  vec2 offset;
-  float zoom;
-} pushConstants;
+layout(set=1, binding=0, r16f) uniform readonly image2D divergenceField;
+layout(set=1, binding=1, r16f) uniform readonly image2D prevPressureField;
+layout(set=1, binding=2) uniform writeonly image2D pressureField;
 
 float loadP(ivec2 pos) {
   // TODO: Correct for aspect ratio
-  // float zoom = 4.0 + pushConstants.time * 2.0;
+  // float zoom = 4.0 + simulation.time * 2.0;
   // vec2 offs = vec2(-0.706835, 0.235839);//
   // vec2 c = (
-  //     2.0 * vec2(pos) / float(pushConstants.width)
+  //     2.0 * vec2(pos) / float(simulation.width)
   //     - vec2(1.0)) / zoom
   //     + offs;
   // float f = mandelbrot(c);
@@ -42,26 +30,26 @@ float loadP(ivec2 pos) {
   // }
   
   pos.x = 
-      (pos.x < pushConstants.width) ? 
+      (pos.x < simulation.width) ? 
         (pos.x < 0) ? 
           abs(pos.x) - 1 : 
           pos.x : 
-        (2 * pushConstants.width - pos.x - 1);
+        (2 * simulation.width - pos.x - 1);
   pos.y = 
-      (pos.y < pushConstants.height) ? 
+      (pos.y < simulation.height) ? 
         (pos.y < 0) ? 
           abs(pos.y) - 1 : 
           pos.y : 
-        (2 * pushConstants.height - pos.y - 1);
-  // pos = clamp(pos, ivec2(0), ivec2(pushConstants.width - 1, pushConstants.height - 1));
+        (2 * simulation.height - pos.y - 1);
+  // pos = clamp(pos, ivec2(0), ivec2(simulation.width - 1, simulation.height - 1));
 
   return imageLoad(prevPressureField, pos).r;  
 }
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= pushConstants.width ||
-      texelPos.y < 0 || texelPos.y >= pushConstants.height) {
+  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
+      texelPos.y < 0 || texelPos.y >= simulation.height) {
     return;
   }
   
@@ -72,12 +60,12 @@ void main() {
   float pU = loadP(texelPos + ivec2(0, 2));
   float pD = loadP(texelPos + ivec2(0, -2));
 
-  float h = max(1.0 / pushConstants.width, 1.0 / pushConstants.height);
+  float h = max(1.0 / simulation.width, 1.0 / simulation.height);
 
   // Update pressure
   p = 0.25 * (pR + pL + pU + pD - div * h * h);
 
-  if (pushConstants.clear) {
+  if (simulation.clear) {
     p = 0.0;
   }
 

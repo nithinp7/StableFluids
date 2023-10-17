@@ -33,7 +33,7 @@ void main() {
 #ifndef SKIP_TONEMAP
   // TODO: Tone-map??
   const float exposure = 0.2;
-  // color.rgb = vec3(1.0) - exp(-color.rgb * exposure);
-  color.rgb = color.rgb / (color.rgb + vec3(1.0));
+  color.rgb = vec3(1.0) - exp(-color.rgb * exposure);
+  // color.rgb = color.rgb / (color.rgb + vec3(1.0));
 #endif
 }
