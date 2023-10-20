@@ -54,37 +54,69 @@ void FluidCanvas2D::initGame(Application& app) {
       {GLFW_KEY_C, GLFW_PRESS, 0},
       [&app, that = this]() { that->_pSimulation->clear = true; });
 
-  app.getInputManager().addKeyBinding(
-      {GLFW_KEY_W, GLFW_PRESS, 0},
-      [&app, that = this]() {
-        that->_pSimulation->offset.y -= 0.25 / that->_pSimulation->zoom;
-      });
+  app.getInputManager().addMousePositionCallback([that = this](double mPosX, double mPosY, bool clicked) {
+    glm::vec2 fromCenter(mPosX - 1.0, 1.0 - mPosY);
+    float d = glm::length(fromCenter);
+    that->_pSimulation->targetPanDir = (d > 0.75f) ? d * fromCenter : glm::vec2(0.0f);
+  });
 
-  app.getInputManager().addKeyBinding(
-      {GLFW_KEY_S, GLFW_PRESS, 0},
-      [&app, that = this]() {
-        that->_pSimulation->offset.y += 0.25 / that->_pSimulation->zoom;
-      });
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_W, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->offset.y -= 0.25 / that->_pSimulation->zoom;
+  //     });
 
-  app.getInputManager().addKeyBinding(
-      {GLFW_KEY_A, GLFW_PRESS, 0},
-      [&app, that = this]() {
-        that->_pSimulation->offset.x -= 0.25 / that->_pSimulation->zoom;
-      });
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_S, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->offset.y += 0.25 / that->_pSimulation->zoom;
+  //     });
 
-  app.getInputManager().addKeyBinding(
-      {GLFW_KEY_D, GLFW_PRESS, 0},
-      [&app, that = this]() {
-        that->_pSimulation->offset.x += 0.25 / that->_pSimulation->zoom;
-      });
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_A, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->offset.x -= 0.25 / that->_pSimulation->zoom;
+  //     });
 
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_D, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->offset.x += 0.25 / that->_pSimulation->zoom;
+  //     });
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_W, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->targetPanDir.y -= 1.0f; 
+  //       that->_pSimulation->targetPanDir.y = glm::clamp(that->_pSimulation->targetPanDir.y, -1.0f, 1.0f);
+  //     });
+
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_S, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->targetPanDir.y += 1.0f; 
+  //       that->_pSimulation->targetPanDir.y = glm::clamp(that->_pSimulation->targetPanDir.y, -1.0f, 1.0f);
+  //     });
+
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_A, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->targetPanDir.x -= 1.0f; 
+  //       that->_pSimulation->targetPanDir.x = glm::clamp(that->_pSimulation->targetPanDir.x, -1.0f, 1.0f);
+  //     });
+
+  // app.getInputManager().addKeyBinding(
+  //     {GLFW_KEY_D, GLFW_PRESS, 0},
+  //     [&app, that = this]() {
+  //       that->_pSimulation->targetPanDir.x += 1.0f; 
+  //       that->_pSimulation->targetPanDir.x = glm::clamp(that->_pSimulation->targetPanDir.x, -1.0f, 1.0f);
+  //     });
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_E, GLFW_PRESS, 0},
-      [&app, that = this]() { that->_pSimulation->zoom *= 2.0f; });
+      [&app, that = this]() { that->_pSimulation->targetZoomDir = glm::clamp(that->_pSimulation->targetZoomDir + 1.0f, -1.0f, 1.0f); });
 
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_Q, GLFW_PRESS, 0},
-      [&app, that = this]() { that->_pSimulation->zoom *= 0.5f; });
+      [&app, that = this]() { that->_pSimulation->targetZoomDir = glm::clamp(that->_pSimulation->targetZoomDir - 1.0f, -1.0f, 1.0f);  });
 }
 
 void FluidCanvas2D::shutdownGame(Application& app) {}

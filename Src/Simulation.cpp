@@ -221,7 +221,9 @@ Simulation::Simulation(
         // Original velocity field
         .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT)
         // Advected velocity field
-        .addStorageImageBinding();
+        .addStorageImageBinding()
+        // Color field
+        .addTextureBinding(VK_SHADER_STAGE_COMPUTE_BIT);
 
     this->_pAdvectMaterialAllocator =
         std::make_unique<DescriptorSetAllocator>(app, layoutBuilder, 1);
@@ -233,7 +235,10 @@ Simulation::Simulation(
             this->_velocityField.sampler)
         .bindStorageImage(
             this->_advectedVelocityField.view,
-            this->_advectedVelocityField.sampler);
+            this->_advectedVelocityField.sampler)
+        .bindTextureDescriptor(
+            this->_colorFieldA.view,
+            this->_colorFieldA.sampler);
 
     // Build pipeine
     ComputePipelineBuilder builder{};
@@ -491,6 +496,39 @@ void Simulation::update(
     const Application& app,
     VkCommandBuffer commandBuffer,
     const FrameContext& frame) {
+  // TODO: Refactor this out into generalized 2D controller
+  float deltaTime = glm::clamp(frame.deltaTime, 0.0f, 1.0f / 30.0f);
+
+  // this->_targetSpeed2D = 
+  //     glm::clamp(this->_targetSpeed2D + this->_accelerationMag2D * deltaTime, 0.0f, this->_maxSpeed2D);
+  
+  glm::vec2 targetVelocity;
+  float dirMag = glm::length(this->targetPanDir);
+  if (dirMag < 0.001f)
+  {
+    targetVelocity = glm::vec2(0.0f);
+  } else {
+    targetVelocity = this->_targetSpeed2D * this->targetPanDir;//glm::normalize(this->targetPanDir);
+  }
+
+  float targetZoomVelocity;
+  if (abs(targetZoomDir) < 0.001f) {
+    targetZoomVelocity = 0.0f;
+  } else {
+    targetZoomVelocity = this->_targetZoomSpeed * glm::sign(this->targetZoomDir);
+  }
+
+  // Velocity feedback controller
+  float K = 4.0f / this->_velocitySettleTime;
+  glm::vec2 acceleration = K * (targetVelocity - this->_velocity2D);
+  float zoomAcceleration = 1.0f * (targetZoomVelocity - this->_velocityZoom);
+
+  this->_velocity2D += acceleration * deltaTime;
+  this->_velocityZoom += zoomAcceleration * deltaTime;
+
+  this->zoom *= glm::pow(2.0, this->_velocityZoom * deltaTime);
+  this->offset += this->_velocity2D / this->zoom * deltaTime;
+
   const VkExtent2D& extent = app.getSwapChainExtent();
 
   SimulationUniforms uniforms{};

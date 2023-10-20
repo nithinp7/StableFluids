@@ -6,6 +6,7 @@
 layout(local_size_x = 16, local_size_y = 16) in;
 layout(set=1, binding=0) uniform sampler2D velocityField;
 layout(set=1, binding=1) uniform writeonly image2D advectedVelocityField;
+layout(set=1, binding=2) uniform sampler2D colorField;
 
 vec2 cameraVel = vec2(0.0);
 
@@ -21,7 +22,12 @@ vec2 sampleVel(vec2 uv) {
     sn.y *= -1.0;
   }
 
-  return sn * v;// + 1000000000.0 * cameraVel;
+  v *= sn;
+  vec3 colorSample = texture(colorField, uv).rgb;
+  float intensity = length(colorSample);
+  v.y -= 0.00001 * intensity;// / (intensity + 1.0);
+
+  return v;
 }
 
 void main() {

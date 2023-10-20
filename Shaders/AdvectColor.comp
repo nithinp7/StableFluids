@@ -29,11 +29,9 @@ vec2 duv = vec2(0.0);
 
 vec3 sampleColor(vec2 uv) {
   float f = texture(fractalTexture, uv + duv).r;
-  float f2 = 10.0 * f * f;
-  vec3 color = f2 * vec3(sin(23.0 * f), sin(13.0 * f + 0.2), sin(13.0 * f + 0.45)) + vec3(1.01 * f2);
+  float f2 = 100.0 * f * f;//100.0 * f * f;// * f;
+  vec3 color = f2 * vec3(cos(5.0 * f + 1.0), sin(5.0 * f + 1.0), sin(5.0 * f + 0.45)) + vec3(1.01 * f2);
 
-
-  vec3 txSample = texture(colorField, uv).rgb;
   // if (length(g) > 0.999999) {
     // Un-gamma correct
     // txSample /= (vec3(1.0) - txSample);
@@ -44,7 +42,10 @@ vec3 sampleColor(vec2 uv) {
   //   txSample -= vec3(f);
   // }
 
-  return txSample + color;
+
+  // vec3 txSample = texture(colorField, uv).rgb;
+  // return mix(color, txSample, 0.95);
+  return color;
 }
 
 vec2 colorGrad(vec2 uv, vec2 cellDims, float h) {
@@ -89,7 +90,7 @@ void main() {
   for (int i = 0; i < COLOR_ADV_STEPS; ++i) {
     vec2 colGradMag = colorGrad(texelUv, cellDims, h);
     vec2 vel = sampleVel(texelUv);
-    // Reject the portion of the velocity along the color gradient
+    // // Reject the portion of the velocity along the color gradient
     vel -= vel * min(dot(vel, colGradMag), 0.0);
     texelUv -= vel * cellDims / h * dt;
   }
@@ -97,11 +98,14 @@ void main() {
   // vec4 srcColor = texture(colorField, texelUv);
   vec4 srcColor = vec4(sampleColor(texelUv), 1.0);
 
+  vec3 txSample = texture(colorField, texelUv).rgb;
+  srcColor.rgb = mix(srcColor.rgb, txSample, 0.9);
+
   if (simulation.clear) {
     srcColor = vec4(0.0, 0.0, 0.0, 1.0);
   }
 
-  imageStore(advectedColorField, texelPos, 0.9 * srcColor);
+  imageStore(advectedColorField, texelPos, srcColor);
 }
 
 

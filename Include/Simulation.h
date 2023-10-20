@@ -75,10 +75,27 @@ public:
   bool clear = true;
   float zoom = 1.0f;
   glm::vec2 offset = glm::vec2(-0.706835, 0.235839);
+  glm::vec2 targetPanDir = glm::vec2(0.0f);
+  float targetZoomDir = 0.0f;
 
 private:
   float _lastZoom = 0.0f;
   glm::vec2 _lastOffset = glm::vec2(0.0f);
+
+  glm::vec2 _velocity2D = glm::vec2(0.0f);
+  float _velocityZoom = 0.0f;
+  float _targetSpeed2D = 0.5f;
+  float _targetZoomSpeed = 0.5f;
+
+  float _accelerationMag2D = 0.0f;
+  float _accelerationMagZoom = 0.0f;
+
+  float _targetZoomDir = 0.0f;
+
+  float _maxSpeed2D = 1.0f;
+  float _maxZoomSpeed = 1.0f;
+
+  float _velocitySettleTime = 1.0f;
 
   // Simulation uniforms
   std::unique_ptr<TransientUniforms<SimulationUniforms>> _pSimulationUniforms; 
