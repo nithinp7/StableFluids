@@ -36,17 +36,7 @@ void FluidCanvas2D::initGame(Application& app) {
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_R, GLFW_PRESS, GLFW_MOD_CONTROL},
       [&app, that = this]() {
-        for (Subpass& subpass : that->_pRenderPass->getSubpasses()) {
-          GraphicsPipeline& pipeline = subpass.getPipeline();
-          if (pipeline.recompileStaleShaders()) {
-            if (pipeline.hasShaderRecompileErrors()) {
-              std::cout << pipeline.getShaderRecompileErrors() << "\n";
-            } else {
-              pipeline.recreatePipeline(app);
-            }
-          }
-        }
-
+        that->_pRenderPass->tryRecompile(app);
         that->_pSimulation->tryRecompileShaders(app);
       });
 
@@ -54,10 +44,14 @@ void FluidCanvas2D::initGame(Application& app) {
       {GLFW_KEY_C, GLFW_PRESS, 0},
       [&app, that = this]() { that->_pSimulation->clear = true; });
 
-  app.getInputManager().addMousePositionCallback([that = this](double mPosX, double mPosY, bool clicked) {
+  app.getInputManager().addMousePositionCallback([that = this, &app](double mPosX, double mPosY, bool clicked) {
     glm::vec2 fromCenter(mPosX - 1.0, 1.0 - mPosY);
     float d = glm::length(fromCenter);
-    that->_pSimulation->targetPanDir = (d > 0.75f) ? d * fromCenter : glm::vec2(0.0f);
+    that->_pSimulation->targetPanDir = 
+        (app.getInputManager().getMouseCursorHidden() && 
+         d > 0.4f) ? 
+        d * fromCenter : 
+        glm::vec2(0.0f);
   });
 
   // app.getInputManager().addKeyBinding(

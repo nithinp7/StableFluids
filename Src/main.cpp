@@ -7,7 +7,7 @@
 using namespace AltheaEngine;
 
 int main() {
-  Application app("../..", "../../Extern/Althea");
+  Application app("Stable Fluids", "../..", "../../Extern/Althea");
   app.createGame<StableFluids::FluidCanvas2D>();
 
   try {

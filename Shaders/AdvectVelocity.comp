@@ -25,7 +25,7 @@ vec2 sampleVel(vec2 uv) {
   v *= sn;
   vec3 colorSample = texture(colorField, uv).rgb;
   float intensity = length(colorSample);
-  v.y -= 0.00001 * intensity;// / (intensity + 1.0);
+  v.y -= 0.0001 * intensity;// / (intensity + 1.0);
 
   return v;
 }

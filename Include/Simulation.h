@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Althea/Application.h>
+#include <Althea/RenderPass.h>
 #include <Althea/ComputePipeline.h>
 #include <Althea/DescriptorSet.h>
 #include <Althea/ImageResource.h>

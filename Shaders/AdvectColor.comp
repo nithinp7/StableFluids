@@ -28,8 +28,8 @@ vec2 sampleVel(vec2 uv) {
 vec2 duv = vec2(0.0);
 
 vec3 sampleColor(vec2 uv) {
-  float f = texture(fractalTexture, uv + duv).r;
-  float f2 = 100.0 * f * f;//100.0 * f * f;// * f;
+  float f = 1.0 * texture(fractalTexture, uv + duv).r;
+  float f2 = 100.0 * f;// * f;//100.0 * f * f;// * f;
   vec3 color = f2 * vec3(cos(5.0 * f + 1.0), sin(5.0 * f + 1.0), sin(5.0 * f + 0.45)) + vec3(1.01 * f2);
 
   // if (length(g) > 0.999999) {
@@ -99,7 +99,7 @@ void main() {
   vec4 srcColor = vec4(sampleColor(texelUv), 1.0);
 
   vec3 txSample = texture(colorField, texelUv).rgb;
-  srcColor.rgb = mix(srcColor.rgb, txSample, 0.9);
+  srcColor.rgb = mix(srcColor.rgb, txSample, 0.99);
 
   if (simulation.clear) {
     srcColor = vec4(0.0, 0.0, 0.0, 1.0);
