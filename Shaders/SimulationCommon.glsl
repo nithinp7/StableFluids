@@ -10,7 +10,7 @@ layout(push_constant) uniform PushConstant {
   uint params2;
 } push;
 
-BUFFER_RW(_simulationUniforms, SimulationUniforms{
+UNIFORM_BUFFER(_simulationUniforms, SimulationUniforms{
   vec2 offset;
   vec2 lastOffset;
 
