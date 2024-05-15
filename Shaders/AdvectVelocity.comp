@@ -1,18 +1,15 @@
 
 #version 450
 
-#include "SimulationUniforms.glsl"
+#include "SimulationCommon.glsl"
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=1, binding=0) uniform sampler2D velocityField;
-layout(set=1, binding=1) uniform writeonly image2D advectedVelocityField;
-layout(set=1, binding=2) uniform sampler2D colorField;
 
 vec2 cameraVel = vec2(0.0);
 
 vec2 sampleVel(vec2 uv) {
   // TODO: Parameterize grid scale / coords
-  vec2 v = texture(velocityField, uv).rg;
+  vec2 v = texture(velocityFieldTexture, uv).rg;
   vec2 sn = vec2(1.0);
   if (uv.x < 0 || uv.x > 1.0) {
     sn.x *= -1.0;
@@ -23,7 +20,7 @@ vec2 sampleVel(vec2 uv) {
   }
 
   v *= sn;
-  vec3 colorSample = texture(colorField, uv).rgb;
+  vec3 colorSample = texture(colorFieldTexture, uv).rgb;
   float intensity = length(colorSample);
   v.y -= 0.0001 * intensity;// / (intensity + 1.0);
 
@@ -31,28 +28,28 @@ vec2 sampleVel(vec2 uv) {
 }
 
 void main() {
-  vec2 uvScale = vec2(1.0) / vec2(simulation.width, simulation.height);
+  vec2 uvScale = vec2(1.0) / vec2(simUniforms.width, simUniforms.height);
   float h = max(uvScale.x, uvScale.y);
 
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
-      texelPos.y < 0 || texelPos.y >= simulation.height) {
+  if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
+      texelPos.y < 0 || texelPos.y >= simUniforms.height) {
     return;
   }
 
   vec2 texelPosf = vec2(texelPos) + vec2(0.5);
-  if (simulation.lastOffset != simulation.offset || simulation.lastZoom != simulation.zoom) {
+  if (simUniforms.lastOffset != simUniforms.offset || simUniforms.lastZoom != simUniforms.zoom) {
     // TODO: Handle zoom change as well...
-    vec2 c = (2.0 * texelPosf * h - vec2(1.0)) / simulation.zoom + simulation.offset;
-    texelPosf = (simulation.lastZoom * (c - simulation.lastOffset) + vec2(1.0)) / 2.0 / h;
+    vec2 c = (2.0 * texelPosf * h - vec2(1.0)) / simUniforms.zoom + simUniforms.offset;
+    texelPosf = (simUniforms.lastZoom * (c - simUniforms.lastOffset) + vec2(1.0)) / 2.0 / h;
   }
 
   vec2 texelUv = texelPosf * uvScale;
 
-  // if (simulation.lastOffset != simulation.offset || simulation.lastZoom != simulation.zoom) {
+  // if (simUniforms.lastOffset != simUniforms.offset || simUniforms.lastZoom != simUniforms.zoom) {
   //   // TODO: Handle zoom change as well...
-  //   // texelUv += vec2(0.1);//(simulation.offset - simulation.lastOffset) / h;
-  //   cameraVel = (simulation.offset - simulation.lastOffset);// / simulation.dt;// / uvScale * h / simulation.dt;
+  //   // texelUv += vec2(0.1);//(simUniforms.offset - simUniforms.lastOffset) / h;
+  //   cameraVel = (simUniforms.offset - simUniforms.lastOffset);// / simUniforms.dt;// / uvScale * h / simUniforms.dt;
   // }
   // TODO: Introduce temperature and buoyancy
   // 
@@ -60,18 +57,18 @@ void main() {
   vec2 vel = sampleVel(texelUv);
   vec2 srcVel = vel;
   vec2 srcUv = texelUv;
-  float dt = simulation.dt / float(ADV_STEPS);
+  float dt = simUniforms.dt / float(ADV_STEPS);
   for (int i = 0; i < ADV_STEPS; ++i) {
     srcUv -= srcVel * uvScale / h * dt;
     srcVel = sampleVel(srcUv);
     // For testing...
-    if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && simulation.clear) {
-      srcVel += vec2(2.0, 0.0) * simulation.dt;
+    if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && simUniforms.clear) {
+      srcVel += vec2(2.0, 0.0) * simUniforms.dt;
     }
   }
 
   // vec2 vel = sampleVel(texelUv);
-  // vec2 srcUv = texelUv - vel * uvScale / h * simulation.dt;
+  // vec2 srcUv = texelUv - vel * uvScale / h * simUniforms.dt;
   // vec2 srcVel = sampleVel(srcUv);
 
 
@@ -96,18 +93,18 @@ void main() {
   vec2 vortConf = vec2(curlD - curlU, curlR - curlL);
   float vortConfMag = length(vortConf);
   if (vortConfMag > 0.00001) {
-    vortConf *= h * simulation.vorticity / vortConfMag;
+    vortConf *= h * simUniforms.vorticity / vortConfMag;
   } else {
     vortConf = vec2(0.0);
   }
 
   vec2 advVel = srcVel + vortConf;
 
-  if (simulation.clear) {
+  if (simUniforms.clear) {
     advVel = vec2(0.0);
   }
 
-  imageStore(advectedVelocityField, texelPos, vec4(advVel, 0.0, 1.0));
+  imageStore(advectedVelocityFieldImage, texelPos, vec4(advVel, 0.0, 1.0));
 }
 
 

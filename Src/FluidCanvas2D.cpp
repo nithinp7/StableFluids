@@ -36,81 +36,37 @@ void FluidCanvas2D::initGame(Application& app) {
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_R, GLFW_PRESS, GLFW_MOD_CONTROL},
       [&app, that = this]() {
-        that->_pRenderPass->tryRecompile(app);
-        that->_pSimulation->tryRecompileShaders(app);
+        that->_renderPass.tryRecompile(app);
+        that->_simulation.tryRecompileShaders(app);
       });
 
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_C, GLFW_PRESS, 0},
-      [&app, that = this]() { that->_pSimulation->clear = true; });
+      [&app, that = this]() { that->_simulation.clear = true; });
 
-  app.getInputManager().addMousePositionCallback([that = this, &app](double mPosX, double mPosY, bool clicked) {
-    glm::vec2 fromCenter(mPosX - 1.0, 1.0 - mPosY);
-    float d = glm::length(fromCenter);
-    that->_pSimulation->targetPanDir = 
-        (app.getInputManager().getMouseCursorHidden() && 
-         d > 0.4f) ? 
-        d * fromCenter : 
-        glm::vec2(0.0f);
-  });
+  app.getInputManager().addMousePositionCallback(
+      [that = this, &app](double mPosX, double mPosY, bool clicked) {
+        glm::vec2 fromCenter(mPosX - 1.0, 1.0 - mPosY);
+        float d = glm::length(fromCenter);
+        that->_simulation.targetPanDir =
+            (app.getInputManager().getMouseCursorHidden() && d > 0.4f)
+                ? d * fromCenter
+                : glm::vec2(0.0f);
+      });
 
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_W, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->offset.y -= 0.25 / that->_pSimulation->zoom;
-  //     });
-
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_S, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->offset.y += 0.25 / that->_pSimulation->zoom;
-  //     });
-
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_A, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->offset.x -= 0.25 / that->_pSimulation->zoom;
-  //     });
-
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_D, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->offset.x += 0.25 / that->_pSimulation->zoom;
-  //     });
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_W, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->targetPanDir.y -= 1.0f; 
-  //       that->_pSimulation->targetPanDir.y = glm::clamp(that->_pSimulation->targetPanDir.y, -1.0f, 1.0f);
-  //     });
-
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_S, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->targetPanDir.y += 1.0f; 
-  //       that->_pSimulation->targetPanDir.y = glm::clamp(that->_pSimulation->targetPanDir.y, -1.0f, 1.0f);
-  //     });
-
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_A, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->targetPanDir.x -= 1.0f; 
-  //       that->_pSimulation->targetPanDir.x = glm::clamp(that->_pSimulation->targetPanDir.x, -1.0f, 1.0f);
-  //     });
-
-  // app.getInputManager().addKeyBinding(
-  //     {GLFW_KEY_D, GLFW_PRESS, 0},
-  //     [&app, that = this]() {
-  //       that->_pSimulation->targetPanDir.x += 1.0f; 
-  //       that->_pSimulation->targetPanDir.x = glm::clamp(that->_pSimulation->targetPanDir.x, -1.0f, 1.0f);
-  //     });
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_E, GLFW_PRESS, 0},
-      [&app, that = this]() { that->_pSimulation->targetZoomDir = glm::clamp(that->_pSimulation->targetZoomDir + 1.0f, -1.0f, 1.0f); });
+      [&app, that = this]() {
+        that->_simulation.targetZoomDir =
+            glm::clamp(that->_simulation.targetZoomDir + 1.0f, -1.0f, 1.0f);
+      });
 
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_Q, GLFW_PRESS, 0},
-      [&app, that = this]() { that->_pSimulation->targetZoomDir = glm::clamp(that->_pSimulation->targetZoomDir - 1.0f, -1.0f, 1.0f);  });
+      [&app, that = this]() {
+        that->_simulation.targetZoomDir =
+            glm::clamp(that->_simulation.targetZoomDir - 1.0f, -1.0f, 1.0f);
+      });
 }
 
 void FluidCanvas2D::shutdownGame(Application& app) {}
@@ -119,71 +75,10 @@ void FluidCanvas2D::createRenderState(Application& app) {
   const VkExtent2D& extent = app.getSwapChainExtent();
 
   SingleTimeCommandBuffer commandBuffer(app);
-  this->_pSimulation = std::make_unique<Simulation>(app, commandBuffer);
-  this->_createGlobalResources(app, commandBuffer);
-  this->_createRenderPass(app);
-}
 
-void FluidCanvas2D::destroyRenderState(Application& app) {
-  this->_pRenderPass.reset();
-  this->_swapChainFrameBuffers = {};
+  _heap = GlobalHeap(app);
+  _simulation = Simulation(app, commandBuffer, _heap);
 
-  this->_pGlobalResources.reset();
-  this->_pGlobalUniforms.reset();
-
-  this->_pSimulation.reset();
-}
-
-void FluidCanvas2D::tick(Application& app, const FrameContext& frame) {
-  GlobalUniforms globalUniforms;
-  globalUniforms.time = frame.currentTime;
-
-  this->_pGlobalUniforms->updateUniforms(globalUniforms, frame);
-}
-
-void FluidCanvas2D::_createGlobalResources(
-    Application& app,
-    SingleTimeCommandBuffer& commandBuffer) {
-  // Global resources
-  {
-    DescriptorSetLayoutBuilder globalResourceLayout;
-
-    // Add texture slots for simulation data
-    globalResourceLayout
-        // Add texture slot for fractal colors
-        .addTextureBinding()
-        // Add texture slot for velocity field
-        .addTextureBinding()
-        // Add texture slot for divergence field
-        .addTextureBinding()
-        // Add texture slot for pressure field
-        .addTextureBinding()
-        // Add texture slot for color dye
-        .addTextureBinding()
-        // Global uniforms
-        .addUniformBufferBinding();
-
-    this->_pGlobalResources =
-        std::make_unique<PerFrameResources>(app, globalResourceLayout);
-    this->_pGlobalUniforms =
-        std::make_unique<TransientUniforms<GlobalUniforms>>(app);
-
-    ResourcesAssignment assignment = this->_pGlobalResources->assign();
-
-    assignment
-        // Bind simulation resources
-        .bindTexture(this->_pSimulation->getFractalTexture())
-        .bindTexture(this->_pSimulation->getVelocityTexture())
-        .bindTexture(this->_pSimulation->getDivergenceTexture())
-        .bindTexture(this->_pSimulation->getPressureTexture())
-        .bindTexture(this->_pSimulation->getColorTexture())
-
-        // Bind global uniforms
-        .bindTransientUniforms(*this->_pGlobalUniforms);
-  }
-}
-
-void FluidCanvas2D::_createRenderPass(Application& app) {
   std::vector<SubpassBuilder> subpassBuilders;
 
   // Render pass
@@ -203,7 +98,8 @@ void FluidCanvas2D::_createRenderPass(Application& app) {
         // Pipeline resource layouts
         .layoutBuilder
         // Global resources
-        .addDescriptorSet(this->_pGlobalResources->getLayout());
+        .addDescriptorSet(_heap.getDescriptorSetLayout())
+        .addPushConstants<SimulationPushConstants>(VK_SHADER_STAGE_ALL);
   }
 
   VkClearValue colorClear;
@@ -216,16 +112,26 @@ void FluidCanvas2D::_createRenderPass(Application& app) {
        true,
        false}};
 
-  const VkExtent2D& extent = app.getSwapChainExtent();
-  this->_pRenderPass = std::make_unique<RenderPass>(
+  this->_renderPass = RenderPass(
       app,
       extent,
       std::move(attachments),
       std::move(subpassBuilders));
 
   this->_swapChainFrameBuffers =
-      SwapChainFrameBufferCollection(app, *this->_pRenderPass, {});
+      SwapChainFrameBufferCollection(app, _renderPass, {});
 }
+
+void FluidCanvas2D::destroyRenderState(Application& app) {
+  _renderPass = {};
+  _swapChainFrameBuffers = {};
+
+  _simulation = {};
+
+  _heap = {};
+}
+
+void FluidCanvas2D::tick(Application& app, const FrameContext& frame) {}
 
 namespace {
 struct DrawableEnvMap {
@@ -240,20 +146,23 @@ void FluidCanvas2D::draw(
     Application& app,
     VkCommandBuffer commandBuffer,
     const FrameContext& frame) {
-  this->_pSimulation->update(app, commandBuffer, frame);
-
-  VkDescriptorSet globalDescriptorSet =
-      this->_pGlobalResources->getCurrentDescriptorSet(frame);
+  VkDescriptorSet heapSet = _heap.getDescriptorSet();
+  _simulation.update(app, commandBuffer, heapSet, frame);
 
   // Render simulation
   {
-    ActiveRenderPass pass = this->_pRenderPass->begin(
+    ActiveRenderPass pass = _renderPass.begin(
         app,
         commandBuffer,
         frame,
         this->_swapChainFrameBuffers.getCurrentFrameBuffer(frame));
     // Bind global descriptor sets
-    pass.setGlobalDescriptorSets(gsl::span(&globalDescriptorSet, 1));
+    pass.setGlobalDescriptorSets(gsl::span(&heapSet, 1));
+    
+    SimulationPushConstants push{};
+    push.simUniforms = _simulation.getSimUniforms(frame).index;
+    pass.getDrawContext().updatePushConstants(push, 0);
+    
     // Draw simulation
     pass.draw(DrawableEnvMap{});
   }

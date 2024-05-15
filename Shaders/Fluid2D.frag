@@ -1,26 +1,18 @@
 #version 450
 
+#include "SimulationCommon.glsl"
+
 layout(location=0) in vec2 screenUV;
 
 layout(location=0) out vec4 color;
 
-layout(set=0, binding=0) uniform sampler2D fractalTexture;
-layout(set=0, binding=1) uniform sampler2D velocityField;
-layout(set=0, binding=2) uniform sampler2D divergenceField;
-layout(set=0, binding=3) uniform sampler2D pressureField;
-layout(set=0, binding=4) uniform sampler2D colorField;
-
-layout(set=0, binding=5) uniform UniformBufferObject {
-  float time;
-} globals;
-
 void main() {
-  vec2 vel = texture(velocityField, screenUV).rg;
-  float pres = texture(pressureField, screenUV).r;
+  vec2 vel = texture(velocityFieldTexture, screenUV).rg;
+  float pres = texture(pressureFieldTexture, screenUV).r;
   // color = vec4(1.0, 0.0, 0.0, 1.0);//
   // color = vec4(abs(pres), 0.0, 0.0, 1.0);
   // color = vec4(abs(vel), 0.0, 1.0);
-  color = texture(colorField, screenUV);
+  color = texture(colorFieldTexture, screenUV);
   // color = vec4(vec3(length(vel)), 1.0);
   // color = vec4(0.0, 0.0, abs(pres), 1.0);
   //vec4(0.5 * normalize(vel) + vec2(0.5), 0.0, 1.0);

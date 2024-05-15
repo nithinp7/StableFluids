@@ -1,45 +1,42 @@
 
 #version 450
 
-#include "SimulationUniforms.glsl"
+#include "SimulationCommon.glsl"
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=1, binding=0, r16f) uniform readonly image2D pressureField;
-layout(set=1, binding=1, rg16f) uniform readonly image2D advectedVelocityField;
-layout(set=1, binding=2) uniform writeonly image2D velocityField;
 
 float loadP(ivec2 pos) {
   pos.x = 
-      (pos.x < simulation.width) ? 
+      (pos.x < simUniforms.width) ? 
         (pos.x < 0) ? 
           abs(pos.x) - 1 : 
           pos.x : 
-        (2 * simulation.width - pos.x - 1);
+        (2 * simUniforms.width - pos.x - 1);
   pos.y = 
-      (pos.y < simulation.height) ? 
+      (pos.y < simUniforms.height) ? 
         (pos.y < 0) ? 
           abs(pos.y) - 1 : 
           pos.y : 
-        (2 * simulation.height - pos.y - 1);
-  // pos = clamp(pos, ivec2(0), ivec2(simulation.width - 1, simulation.height - 1));
+        (2 * simUniforms.height - pos.y - 1);
+  // pos = clamp(pos, ivec2(0), ivec2(simUniforms.width - 1, simUniforms.height - 1));
 
-  return imageLoad(pressureField, pos).r;  
+  return imageLoad(pressureFieldImage, pos).r;  
 }
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
-      texelPos.y < 0 || texelPos.y >= simulation.height) {
+  if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
+      texelPos.y < 0 || texelPos.y >= simUniforms.height) {
     return;
   }
   
   // Project velocity field to be divergence free
-  vec2 uvScale = vec2(1.0) / vec2(simulation.width, simulation.height);
+  vec2 uvScale = vec2(1.0) / vec2(simUniforms.width, simUniforms.height);
   vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
 
   float h = max(uvScale.x, uvScale.y);
 
-  vec2 vel = imageLoad(advectedVelocityField, texelPos).rg;
+  vec2 vel = imageLoad(advectedVelocityFieldImage, texelPos).rg;
   float pR = loadP(texelPos + ivec2(1, 0));
   float pL = loadP(texelPos + ivec2(-1, 0));
   float pU = loadP(texelPos + ivec2(0, 1));
@@ -47,11 +44,11 @@ void main() {
 
   vel -= 0.5 / h * vec2(pR - pL, pU - pD);
 
-  if (simulation.clear) {
+  if (simUniforms.clear) {
     vel = vec2(0.0);
   }
 
-  imageStore(velocityField, texelPos, vec4(vel, 0.0, 1.0));
+  imageStore(velocityFieldImage, texelPos, vec4(vel, 0.0, 1.0));
 }
 
 

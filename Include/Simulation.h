@@ -1,17 +1,17 @@
 #pragma once
 
 #include <Althea/Application.h>
-#include <Althea/RenderPass.h>
 #include <Althea/ComputePipeline.h>
 #include <Althea/DescriptorSet.h>
-#include <Althea/ImageResource.h>
-#include <Althea/SingleTimeCommandBuffer.h>
 #include <Althea/DynamicBuffer.h>
-#include <Althea/TransientUniforms.h>
+#include <Althea/GlobalHeap.h>
+#include <Althea/ImageResource.h>
 #include <Althea/PerFrameResources.h>
-#include <vulkan/vulkan.h>
-
+#include <Althea/RenderPass.h>
+#include <Althea/SingleTimeCommandBuffer.h>
+#include <Althea/TransientUniforms.h>
 #include <glm/glm.hpp>
+#include <vulkan/vulkan.h>
 
 #include <memory>
 
@@ -23,34 +23,67 @@ struct Particle {
   glm::vec3 velocity;
 };
 
+struct SimulationPushConstants {
+  uint32_t simUniforms;
+  uint32_t params0;
+  uint32_t params1;
+  uint32_t params2;
+};
+
 struct SimulationUniforms {
   float offsetX;
   float offsetY;
   float lastOffsetX;
   float lastOffsetY;
+
   float zoom;
   float lastZoom;
-
   int width;
   int height;
+
   float time;
   float dt;
   float sorOmega;
   float density;
+
   float vorticity;
-  bool clear;
+  uint32_t flags;
+  uint32_t padding1;
+  uint32_t padding2;
+
+  uint32_t fractalTexture;
+  uint32_t velocityFieldTexture;
+  uint32_t colorFieldTexture;
+  uint32_t divergenceFieldTexture;
+
+  uint32_t pressureFieldTexture;
+  uint32_t advectedColorFieldImage;
+  uint32_t advectedVelocityFieldImage;
+  uint32_t divergenceFieldImage;
+
+  uint32_t pressureFieldImage;
+  uint32_t fractalImage;
+  uint32_t velocityFieldImage;
+  uint32_t iterationCountsImage;
+
+  uint32_t colorFieldImage;
 };
 
 class Simulation {
 public:
-  Simulation(Application& app, SingleTimeCommandBuffer& commandBuffer);
+  Simulation() = default;
+  Simulation(
+      Application& app,
+      SingleTimeCommandBuffer& commandBuffer,
+      GlobalHeap& heap);
   void update(
       const Application& app,
       VkCommandBuffer commandBuffer,
+      VkDescriptorSet heapSet,
       const FrameContext& frame);
 
   void tryRecompileShaders(Application& app);
-  
+
   const ImageResource& getFractalIterations() const {
     return this->_iterationCounts;
   }
@@ -73,6 +106,10 @@ public:
 
   const ImageResource& getColorTexture() const { return this->_colorFieldA; }
 
+  UniformHandle getSimUniforms(const FrameContext& frame) const {
+    return _simulationUniforms.getCurrentHandle(frame);
+  }
+  
   bool clear = true;
   float zoom = 1.0f;
   glm::vec2 offset = glm::vec2(-0.706835, 0.235839);
@@ -99,59 +136,41 @@ private:
   float _velocitySettleTime = 1.0f;
 
   // Simulation uniforms
-  std::unique_ptr<TransientUniforms<SimulationUniforms>> _pSimulationUniforms; 
-  std::unique_ptr<PerFrameResources> _pSimulationResources;
+  TransientUniforms<SimulationUniforms> _simulationUniforms;
 
   // Fractal pass
   ImageResource _iterationCounts{};
   ImageResource _fractalTexture{};
-  std::unique_ptr<DescriptorSetAllocator> _pFractalMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pFractalMaterial;
-  std::unique_ptr<ComputePipeline> _pFractalPass;
+  ComputePipeline _fractalPass;
 
   // Velocity advection pass
   ImageResource _velocityField{};
   ImageResource _advectedVelocityField{};
-  std::unique_ptr<DescriptorSetAllocator> _pAdvectMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pAdvectMaterial;
-  std::unique_ptr<ComputePipeline> _pAdvectPass;
+  ComputePipeline _advectPass;
 
   // Divergence calculation pass
   ImageResource _divergenceField{};
-  std::unique_ptr<DescriptorSetAllocator> _pDivergenceMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pDivergenceMaterial;
-  std::unique_ptr<ComputePipeline> _pDivergencePass;
+  ComputePipeline _divergencePass;
 
   // Pressure calculation pass
   // Ping-pong buffers for pressure computation
   ImageResource _pressureFieldA{};
   ImageResource _pressureFieldB{};
-  std::unique_ptr<DescriptorSetAllocator> _pPressureMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pPressureMaterialA;
-  std::unique_ptr<DescriptorSet> _pPressureMaterialB;
-  std::unique_ptr<ComputePipeline> _pPressurePass;
+  ComputePipeline _pressurePass;
 
   // Velocity update pass
   ImageResource _colorFieldA{};
   ImageResource _colorFieldB{};
-  std::unique_ptr<DescriptorSetAllocator> _pUpdateMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pUpdateMaterial;
-  std::unique_ptr<ComputePipeline> _pUpdateVelocityPass;
+  ComputePipeline _updateVelocityPass;
 
   // Advect color dye
-  std::unique_ptr<DescriptorSetAllocator> _pAdvectColorMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pAdvectColorMaterial;
-  std::unique_ptr<ComputePipeline> _pAdvectColorPass;
-  
+  ComputePipeline _advectColorPass;
+
   // Udate color field
-  std::unique_ptr<DescriptorSetAllocator> _pUpdateColorMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pUpdateColorMaterial;
-  std::unique_ptr<ComputePipeline> _pUpdateColorPass;
+  ComputePipeline _updateColorPass;
 
   // Particle storage buffer
   DynamicBuffer _particles{};
-  std::unique_ptr<DescriptorSetAllocator> _pUpdateParticlesMaterialAllocator;
-  std::unique_ptr<DescriptorSet> _pUpdateParticlesMaterial;
-  std::unique_ptr<ComputePipeline> _pUpdateParticlesPass;
+  ComputePipeline _updateParticlesPass;
 };
 } // namespace StableFluids

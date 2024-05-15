@@ -1,26 +1,24 @@
 
 #version 450
 
-#include "SimulationUniforms.glsl"
+#include "SimulationCommon.glsl"
 #include "Fractals.glsl"
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=1, binding=0) uniform writeonly iimage2D iterationCounts;
-layout(set=1, binding=1) uniform writeonly image2D fractalImage;
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
-      texelPos.y < 0 || texelPos.y >= simulation.height) {
+  if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
+      texelPos.y < 0 || texelPos.y >= simUniforms.height) {
     return;
   }
   
-  float h = max(1.0 / simulation.width, 1.0 / simulation.height);
+  float h = max(1.0 / simUniforms.width, 1.0 / simUniforms.height);
 
   vec2 c = (
       2.0 * vec2(texelPos) * h 
-      - vec2(1.0)) / simulation.zoom
-      + simulation.offset;
+      - vec2(1.0)) / simUniforms.zoom
+      + simUniforms.offset;
 
   const int FRACTAL_ITERS = 10000;
   int i = 0;
@@ -48,7 +46,7 @@ void main() {
   float color = color2;//(1.0 - color2) * (1.0 - mod(float(i), 10.0));
   // * color2 + color1;
   // color = color1;
-  imageStore(iterationCounts, texelPos, ivec4(i, 0, 0, 1));
+  imageStore(iterationCountsImage, texelPos, ivec4(i, 0, 0, 1));
   imageStore(fractalImage, texelPos, vec4(color, 0.0, 0.0, 1.0));
 }
 

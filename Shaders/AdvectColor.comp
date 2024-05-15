@@ -1,18 +1,13 @@
 
 #version 450
 
-#include "SimulationUniforms.glsl"
+#include "SimulationCommon.glsl"
 #include "Fractals.glsl"
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=1, binding=0) uniform sampler2D fractalTexture;
-layout(set=1, binding=1) uniform sampler2D velocityField;
-layout(set=1, binding=2) uniform sampler2D colorField;
-layout(set=1, binding=3) uniform writeonly image2D advectedColorField;
-
 
 vec2 sampleVel(vec2 uv) {
-  vec2 v = texture(velocityField, uv).rg;
+  vec2 v = texture(velocityFieldTexture, uv).rg;
   vec2 sn = vec2(1.0);
   if (uv.x < 0 || uv.x > 1.0) {
     sn.x *= -1.0;
@@ -43,7 +38,7 @@ vec3 sampleColor(vec2 uv) {
   // }
 
 
-  // vec3 txSample = texture(colorField, uv).rgb;
+  // vec3 txSample = texture(colorFieldTexture, uv).rgb;
   // return mix(color, txSample, 0.95);
   return color;
 }
@@ -60,20 +55,20 @@ vec2 colorGrad(vec2 uv, vec2 cellDims, float h) {
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
-      texelPos.y < 0 || texelPos.y >= simulation.height) {
+  if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
+      texelPos.y < 0 || texelPos.y >= simUniforms.height) {
     return;
   }
   
-  vec2 cellDims = vec2(1.0) / vec2(simulation.width, simulation.height);
+  vec2 cellDims = vec2(1.0) / vec2(simUniforms.width, simUniforms.height);
   float h = max(cellDims.x, cellDims.y);
 
   vec2 texelPosf = vec2(texelPos) + vec2(0.5);
   vec2 oldTexelPosf = texelPosf;
-  if (simulation.lastOffset != simulation.offset || simulation.lastZoom != simulation.zoom) {
+  if (simUniforms.lastOffset != simUniforms.offset || simUniforms.lastZoom != simUniforms.zoom) {
     // TODO: Handle zoom change as well...
-    vec2 c = (2.0 * texelPosf * h - vec2(1.0)) / simulation.zoom + simulation.offset;
-    oldTexelPosf = (simulation.lastZoom * (c - simulation.lastOffset) + vec2(1.0)) / 2.0 / h;
+    vec2 c = (2.0 * texelPosf * h - vec2(1.0)) / simUniforms.zoom + simUniforms.offset;
+    oldTexelPosf = (simUniforms.lastZoom * (c - simUniforms.lastOffset) + vec2(1.0)) / 2.0 / h;
   }
 
   // Advect color dye
@@ -84,7 +79,7 @@ void main() {
   texelUv.y = clamp(texelUv.y, 0.0, 1.0);
   
   const int COLOR_ADV_STEPS = 12;
-  float dt = simulation.dt / float(COLOR_ADV_STEPS);
+  float dt = simUniforms.dt / float(COLOR_ADV_STEPS);
 
   // Integrate backwards through velocity field
   for (int i = 0; i < COLOR_ADV_STEPS; ++i) {
@@ -95,17 +90,17 @@ void main() {
     texelUv -= vel * cellDims / h * dt;
   }
 
-  // vec4 srcColor = texture(colorField, texelUv);
+  // vec4 srcColor = texture(colorFieldTexture, texelUv);
   vec4 srcColor = vec4(sampleColor(texelUv), 1.0);
 
-  vec3 txSample = texture(colorField, texelUv).rgb;
+  vec3 txSample = texture(colorFieldTexture, texelUv).rgb;
   srcColor.rgb = mix(srcColor.rgb, txSample, 0.99);
 
-  if (simulation.clear) {
+  if (simUniforms.clear) {
     srcColor = vec4(0.0, 0.0, 0.0, 1.0);
   }
 
-  imageStore(advectedColorField, texelPos, srcColor);
+  imageStore(advectedColorFieldImage, texelPos, srcColor);
 }
 
 

@@ -1,39 +1,37 @@
 
 #version 450
 
-#include "SimulationUniforms.glsl"
+#include "SimulationCommon.glsl"
 #include "Fractals.glsl"
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=1, binding=0, rg16f) uniform readonly image2D advectedVelocityField;
-layout(set=1, binding=1) uniform writeonly image2D divergenceField;
 
 vec2 loadVel(ivec2 pos) {
   // TODO: Parameterize grid scale / coords
   vec2 sn = vec2(1.0);
-  if (pos.x < 0 || pos.x >= simulation.width) {
+  if (pos.x < 0 || pos.x >= simUniforms.width) {
     sn.x *= -1.0;
   }
 
-  if (pos.y < 0 || pos.y >= simulation.height) {
+  if (pos.y < 0 || pos.y >= simUniforms.height) {
     sn.y *= -1.0;
   }
 
-  pos = clamp(pos, ivec2(0), ivec2(simulation.width - 1, simulation.height - 1));
-  vec2 v = imageLoad(advectedVelocityField, pos).rg;
+  pos = clamp(pos, ivec2(0), ivec2(simUniforms.width - 1, simUniforms.height - 1));
+  vec2 v = imageLoad(advectedVelocityFieldImage, pos).rg;
   return sn * v;
-  // pos = clamp(pos, ivec2(0), ivec2(simulation.width - 1, simulation.height - 1));
-  // return imageLoad(advectedVelocityField, pos).rg;
+  // pos = clamp(pos, ivec2(0), ivec2(simUniforms.width - 1, simUniforms.height - 1));
+  // return imageLoad(advectedVelocityFieldImage, pos).rg;
 }
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
-      texelPos.y < 0 || texelPos.y >= simulation.height) {
+  if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
+      texelPos.y < 0 || texelPos.y >= simUniforms.height) {
     return;
   }
 
-  float h = max(1.0 / simulation.width, 1.0 / simulation.height);
+  float h = max(1.0 / simUniforms.width, 1.0 / simUniforms.height);
   
   // Calculate local divergence  
   vec2 vel = loadVel(texelPos);
@@ -47,7 +45,7 @@ void main() {
   // // if (texelPos.x < 20 && texelPos.y < 20) {div = 50.0;}
 
   // // TODO: Correct for aspect ratio
-  // float zoom = 12.0 ;//+ simulation.time * 2.0;
+  // float zoom = 12.0 ;//+ simUniforms.time * 2.0;
   // vec2 offs = vec2(-0.706835, 0.235839);//
   // vec2 c = (
   //     2.0 * vec2(texelPos) * h 
@@ -60,11 +58,11 @@ void main() {
   //   div = -1.0;//5.0 * f;
   // }
 
-  if (simulation.clear) {
+  if (simUniforms.clear) {
     div = 0.0;
   }
 
-  imageStore(divergenceField, texelPos, vec4(div, 0.0, 0.0, 1.0));
+  imageStore(divergenceFieldImage, texelPos, vec4(div, 0.0, 0.0, 1.0));
 }
 
 

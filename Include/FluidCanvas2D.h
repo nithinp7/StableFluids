@@ -8,6 +8,7 @@
 #include <Althea/DeferredRendering.h>
 #include <Althea/DescriptorSet.h>
 #include <Althea/FrameBuffer.h>
+#include <Althea/GlobalHeap.h>
 #include <Althea/IGameInstance.h>
 #include <Althea/Image.h>
 #include <Althea/ImageBasedLighting.h>
@@ -40,21 +41,20 @@ struct SimResources {
   // Velocity advection pass
   ImageResource velocityField{};
   ImageResource advectedVelocityField{};
-  std::unique_ptr<DescriptorSetAllocator> _pAdvectPassMaterialAllocator;
-  std::unique_ptr<ComputePipeline> _pAdvectPass;
+  ComputePipeline _advectPass;
 
   // Divergence calculation pass
   ImageResource divergenceField{};
-  std::unique_ptr<ComputePipeline> _pDivergencePass;
+  ComputePipeline _divergencePass;
 
   // Pressure calculation pass
   // Ping-pong buffers for pressure computation
   ImageResource pressureFieldA{};
   ImageResource pressureFieldB{};
-  std::unique_ptr<ComputePipeline> _pPressurePass;
+  ComputePipeline _pressurePass;
 
   // Velocity update pass
-  std::unique_ptr<ComputePipeline> _pUpdateVelocityPass;
+  ComputePipeline _updateVelocityPass;
 };
 
 class FluidCanvas2D : public IGameInstance {
@@ -75,18 +75,11 @@ public:
       const FrameContext& frame) override;
 
 private:
-  void
-  _createSimulation(Application& app, SingleTimeCommandBuffer& commandBuffer);
-  std::unique_ptr<Simulation> _pSimulation;
+  GlobalHeap _heap;
 
-  void _createGlobalResources(
-      Application& app,
-      SingleTimeCommandBuffer& commandBuffer);
-  std::unique_ptr<PerFrameResources> _pGlobalResources;
-  std::unique_ptr<TransientUniforms<GlobalUniforms>> _pGlobalUniforms;
-
-  void _createRenderPass(Application& app);
-  std::unique_ptr<RenderPass> _pRenderPass;
+  Simulation _simulation;
+  
+  RenderPass _renderPass;
   SwapChainFrameBufferCollection _swapChainFrameBuffers;
 };
 } // namespace StableFluids
