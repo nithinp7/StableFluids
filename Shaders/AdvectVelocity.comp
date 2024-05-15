@@ -100,7 +100,7 @@ void main() {
 
   vec2 advVel = srcVel + vortConf;
 
-  if (simUniforms.clear) {
+  if (isClearFlagSet()) {
     advVel = vec2(0.0);
   }
 

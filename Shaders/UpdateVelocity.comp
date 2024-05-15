@@ -5,6 +5,8 @@
 
 layout(local_size_x = 16, local_size_y = 16) in;
 
+#define pressureFieldImage _r16fimageHeap[simUniforms.pressureFieldImage]
+
 float loadP(ivec2 pos) {
   pos.x = 
       (pos.x < simUniforms.width) ? 
@@ -44,7 +46,7 @@ void main() {
 
   vel -= 0.5 / h * vec2(pR - pL, pU - pD);
 
-  if (simUniforms.clear) {
+  if (isClearFlagSet()) {
     vel = vec2(0.0);
   }
 

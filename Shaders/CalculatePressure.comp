@@ -6,6 +6,11 @@
 
 layout(local_size_x = 16, local_size_y = 16) in;
 
+#define phase push.params0
+
+#define pressureA _r16fimageHeap[simUniforms.pressureFieldImage + phase]
+#define pressureB _r16fimageHeap[simUniforms.pressureFieldImage + (1 - phase)]
+
 float loadP(ivec2 pos) {
   // TODO: Correct for aspect ratio
   // float zoom = 4.0 + simUniforms.time * 2.0;
@@ -40,7 +45,7 @@ float loadP(ivec2 pos) {
         (2 * simUniforms.height - pos.y - 1);
   // pos = clamp(pos, ivec2(0), ivec2(simUniforms.width - 1, simUniforms.height - 1));
 
-  return imageLoad(prevPressureFieldImage, pos).r;  
+  return imageLoad(pressureA, pos).r;  
 }
 
 void main() {
@@ -62,11 +67,11 @@ void main() {
   // Update pressure
   p = 0.25 * (pR + pL + pU + pD - div * h * h);
 
-  if (simUniforms.clear) {
+  if (isClearFlagSet()) {
     p = 0.0;
   }
 
-  imageStore(pressureFieldImage, texelPos, vec4(p, 0.0, 0.0, 1.0));
+  imageStore(pressureB, texelPos, vec4(p, 0.0, 0.0, 1.0));
 }
 
 

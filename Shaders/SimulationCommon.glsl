@@ -3,7 +3,7 @@
 
 #include <Bindless/GlobalHeap.glsl>
 
-layout(location=push_constant) uniform PushConstant {
+layout(push_constant) uniform PushConstant {
   uint simUniforms;
   uint params0;
   uint params1;
@@ -49,9 +49,11 @@ BUFFER_RW(_simulationUniforms, SimulationUniforms{
 #define simUniforms _simulationUniforms[push.simUniforms]
 
 SAMPLER2D(_textureHeap);
-IMAGE2D_RW(_imageHeap);
-IMAGE2D_RW(_r16imageHeap, r16f);
-DECL_IMAGE_HEAP(uniform iimage2D _iimageHeap);
+IMAGE2D_RW(_rgba32fimageHeap, rgba32f);
+IMAGE2D_RW(_r32fimageHeap, r32f);
+IMAGE2D_RW(_rg16fimageHeap, rg16f);
+IMAGE2D_RW(_r16fimageHeap, r16f);
+DECL_IMAGE_HEAP(uniform iimage2D _iimageHeap, r32i);
 
 #define fractalTexture              _textureHeap[simUniforms.fractalTexture]
 #define velocityFieldTexture        _textureHeap[simUniforms.velocityFieldTexture]
@@ -59,18 +61,15 @@ DECL_IMAGE_HEAP(uniform iimage2D _iimageHeap);
 #define divergenceFieldTexture      _textureHeap[simUniforms.divergenceFieldTexture]
 
 #define pressureFieldTexture        _textureHeap[simUniforms.pressureFieldTexture]
-#define advectedColorFieldImage     _imageHeap[simUniforms.advectedColorFieldImage]
-#define advectedVelocityFieldImage  _imageHeap[simUniforms.advectedVelocityFieldImage]
-#define divergenceFieldImage        _imageHeap[simUniforms.divergenceFieldImage]
+#define advectedColorFieldImage     _rgba32fimageHeap[simUniforms.advectedColorFieldImage]
+#define advectedVelocityFieldImage  _rg16fimageHeap[simUniforms.advectedVelocityFieldImage]
+#define divergenceFieldImage        _r16fimageHeap[simUniforms.divergenceFieldImage]
 
-// TODO: Fix
-#define prevPressureFieldImage      _imageHeap[simUniforms.prevPressureFieldImage]
-#define pressureFieldImage          _imageHeap[simUniforms.pressureFieldImage]
-#define fractalImage                _imageHeap[simUniforms.fractalImage]
-#define velocityFieldImage          _imageHeap[simUniforms.velocityFieldImage]
+#define fractalImage                _r32fimageHeap[simUniforms.fractalImage]
+#define velocityFieldImage          _rg16fimageHeap[simUniforms.velocityFieldImage]
 
 #define iterationCountsImage        _iimageHeap[simUniforms.iterationCountsImage]
 
 #define isClearFlagSet() bool(simUniforms.flags & 1) 
 
-#endif _SIMULATIONCOMMON_
+#endif // _SIMULATIONCOMMON_

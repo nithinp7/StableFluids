@@ -96,7 +96,7 @@ void main() {
   vec3 txSample = texture(colorFieldTexture, texelUv).rgb;
   srcColor.rgb = mix(srcColor.rgb, txSample, 0.99);
 
-  if (simUniforms.clear) {
+  if (isClearFlagSet()) {
     srcColor = vec4(0.0, 0.0, 0.0, 1.0);
   }
 

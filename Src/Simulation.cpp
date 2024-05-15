@@ -154,16 +154,14 @@ Simulation::Simulation(
     viewOptions.format = VK_FORMAT_R16_SFLOAT;
 
     this->_pressureFieldA.image = Image(app, imageOptions);
+    this->_pressureFieldB.image = Image(app, imageOptions);
+
     this->_pressureFieldA.view =
         ImageView(app, this->_pressureFieldA.image, viewOptions);
-    this->_pressureFieldA.sampler = Sampler(app, {});
-
-    // Only one of the ping-pong buffers needs to be capable of being sampled in
-    // the fragment shader
-    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT;
-    this->_pressureFieldB.image = Image(app, imageOptions);
     this->_pressureFieldB.view =
         ImageView(app, this->_pressureFieldB.image, viewOptions);
+        
+    this->_pressureFieldA.sampler = Sampler(app, {});
     this->_pressureFieldB.sampler = Sampler(app, {});
 
     this->_pressureFieldA.registerToImageHeap(heap);
@@ -183,22 +181,22 @@ Simulation::Simulation(
 
     ImageViewOptions viewOptions{};
     viewOptions.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    viewOptions.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 
     SamplerOptions samplerOptions{};
     samplerOptions.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
     samplerOptions.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
 
     this->_colorFieldA.image = Image(app, imageOptions);
+    this->_colorFieldB.image = Image(app, imageOptions);
+
     this->_colorFieldA.view =
         ImageView(app, this->_colorFieldA.image, viewOptions);
-    this->_colorFieldA.sampler = Sampler(app, samplerOptions);
-
-    imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT;
-
-    this->_colorFieldB.image = Image(app, imageOptions);
     this->_colorFieldB.view =
         ImageView(app, this->_colorFieldB.image, viewOptions);
-    this->_colorFieldB.sampler = Sampler(app, {});
+
+    this->_colorFieldA.sampler = Sampler(app, samplerOptions);
+    this->_colorFieldB.sampler = Sampler(app, samplerOptions);
 
     this->_colorFieldA.registerToImageHeap(heap);
     this->_colorFieldB.registerToImageHeap(heap);

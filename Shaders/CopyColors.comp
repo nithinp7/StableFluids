@@ -1,22 +1,23 @@
 
 #version 450
 
-#include "SimulationUniforms.glsl"
+#include "SimulationCommon.glsl"
 
 layout(local_size_x = 16, local_size_y = 16) in;
-layout(set=1, binding=0, rgba32f) uniform readonly image2D src;
-layout(set=1, binding=1) uniform writeonly image2D dest;
+
+#define colorFieldA _rgba32fimageHeap[simUniforms.colorFieldImage] // dst
+#define colorFieldB _rgba32fimageHeap[simUniforms.colorFieldImage+1] // src
 
 void main() {
   ivec2 texelPos = ivec2(gl_GlobalInvocationID.xy);
-  if (texelPos.x < 0 || texelPos.x >= simulation.width ||
-      texelPos.y < 0 || texelPos.y >= simulation.height) {
+  if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
+      texelPos.y < 0 || texelPos.y >= simUniforms.height) {
     return;
   }
 
-  vec4 color = imageLoad(src, texelPos);
+  vec4 color = imageLoad(colorFieldB, texelPos);
 
-  // if (simulation.clear) {
+  // if (simUniforms.clear) {
   //   ivec2 t = ((ivec2(50) + texelPos) / 100) % 2;
   //   int sum = t.x + t.y;
   //   if (sum == 0) {
@@ -30,15 +31,15 @@ void main() {
   //   }
   // }
 
-  vec2 uvScale = vec2(1.0) / vec2(simulation.width, simulation.height);
+  vec2 uvScale = vec2(1.0) / vec2(simUniforms.width, simUniforms.height);
   vec2 texelUv = (vec2(texelPos) + vec2(0.5)) * uvScale;
 
-  // if (texelUv.x <= 0.01 && texelUv.y > 0.499 && texelUv.y < 0.501) {// && simulation.clear) {
-  //   // float f = sin(simulation.time);
+  // if (texelUv.x <= 0.01 && texelUv.y > 0.499 && texelUv.y < 0.501) {// && simUniforms.clear) {
+  //   // float f = sin(simUniforms.time);
   //   // color = vec4(1.0, f, 0.0, 1.0);
   // }
 
-  imageStore(dest, texelPos, color);
+  imageStore(colorFieldA, texelPos, color);
 }
 
 
