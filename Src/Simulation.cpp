@@ -15,7 +15,7 @@ static ComputePipeline createComputePass(
   ComputePipelineBuilder builder{};
   builder.setComputeShader(GProjectDirectory + shaderRelativePath);
   builder.layoutBuilder.addDescriptorSet(heap.getDescriptorSetLayout())
-      .addPushConstants<SimulationPushConstants>(VK_SHADER_STAGE_ALL);
+      .addPushConstants<SimulationPushConstants>(VK_SHADER_STAGE_COMPUTE_BIT);
 
   return ComputePipeline(app, std::move(builder));
 }
@@ -160,7 +160,7 @@ Simulation::Simulation(
         ImageView(app, this->_pressureFieldA.image, viewOptions);
     this->_pressureFieldB.view =
         ImageView(app, this->_pressureFieldB.image, viewOptions);
-        
+
     this->_pressureFieldA.sampler = Sampler(app, {});
     this->_pressureFieldB.sampler = Sampler(app, {});
 
@@ -312,6 +312,7 @@ void Simulation::update(
 
   auto bindCompute =
       [&](const ComputePipeline& c) {
+        c.bindPipeline(commandBuffer);
         vkCmdPushConstants(
             commandBuffer,
             c.getLayout(),
@@ -328,7 +329,6 @@ void Simulation::update(
             &heapSet,
             0,
             nullptr);
-        c.bindPipeline(commandBuffer);
       };
 
   // Update fractal pass

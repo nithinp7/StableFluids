@@ -99,7 +99,8 @@ void FluidCanvas2D::createRenderState(Application& app) {
         .layoutBuilder
         // Global resources
         .addDescriptorSet(_heap.getDescriptorSetLayout())
-        .addPushConstants<SimulationPushConstants>(VK_SHADER_STAGE_ALL);
+        .addPushConstants<SimulationPushConstants>(
+            VK_SHADER_STAGE_FRAGMENT_BIT);
   }
 
   VkClearValue colorClear;
@@ -158,11 +159,11 @@ void FluidCanvas2D::draw(
         this->_swapChainFrameBuffers.getCurrentFrameBuffer(frame));
     // Bind global descriptor sets
     pass.setGlobalDescriptorSets(gsl::span(&heapSet, 1));
-    
+
     SimulationPushConstants push{};
     push.simUniforms = _simulation.getSimUniforms(frame).index;
     pass.getDrawContext().updatePushConstants(push, 0);
-    
+
     // Draw simulation
     pass.draw(DrawableEnvMap{});
   }
