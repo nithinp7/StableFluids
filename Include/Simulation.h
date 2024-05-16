@@ -48,7 +48,7 @@ struct SimulationUniforms {
 
   float vorticity;
   uint32_t flags;
-  uint32_t padding1;
+  uint32_t inputMask;
   uint32_t padding2;
 
   uint32_t fractalTexture;

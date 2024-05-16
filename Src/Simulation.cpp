@@ -281,6 +281,7 @@ void Simulation::update(
   uniforms.offsetY = this->offset.y;
   uniforms.lastOffsetX = this->_lastOffset.x;
   uniforms.lastOffsetY = this->_lastOffset.y;
+  uniforms.inputMask = app.getInputManager().getCurrentInputMask();
 
   uniforms.fractalTexture = _fractalTexture.textureHandle.index;
   uniforms.velocityFieldTexture = _velocityField.textureHandle.index;
@@ -310,26 +311,25 @@ void Simulation::update(
   SimulationPushConstants push{};
   push.simUniforms = _simulationUniforms.getCurrentHandle(frame).index;
 
-  auto bindCompute =
-      [&](const ComputePipeline& c) {
-        c.bindPipeline(commandBuffer);
-        vkCmdPushConstants(
-            commandBuffer,
-            c.getLayout(),
-            VK_SHADER_STAGE_COMPUTE_BIT,
-            0,
-            sizeof(SimulationPushConstants),
-            &push);
-        vkCmdBindDescriptorSets(
-            commandBuffer,
-            VK_PIPELINE_BIND_POINT_COMPUTE,
-            c.getLayout(),
-            0,
-            1,
-            &heapSet,
-            0,
-            nullptr);
-      };
+  auto bindCompute = [&](const ComputePipeline& c) {
+    c.bindPipeline(commandBuffer);
+    vkCmdPushConstants(
+        commandBuffer,
+        c.getLayout(),
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        sizeof(SimulationPushConstants),
+        &push);
+    vkCmdBindDescriptorSets(
+        commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        c.getLayout(),
+        0,
+        1,
+        &heapSet,
+        0,
+        nullptr);
+  };
 
   // Update fractal pass
   if (this->zoom != this->_lastZoom || this->offset != this->_lastOffset) {

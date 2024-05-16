@@ -2,6 +2,7 @@
 #define _SIMULATIONCOMMON_
 
 #include <Bindless/GlobalHeap.glsl>
+#include <Misc/Input.glsl>
 
 layout(push_constant) uniform PushConstant {
   uint simUniforms;
@@ -26,7 +27,7 @@ UNIFORM_BUFFER(_simulationUniforms, SimulationUniforms{
   
   float vorticity;
   uint flags;
-  uint padding1;
+  uint inputMask;
   uint padding2;
 
   uint fractalTexture;
