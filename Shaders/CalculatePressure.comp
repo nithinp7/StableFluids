@@ -66,6 +66,7 @@ void main() {
 
   // Update pressure
   p = 0.25 * (pR + pL + pU + pD - div * h * h);
+  // p = mix(loadP(texelPos), 0.25 * (pR + pL + pU + pD - div * h * h), 0.9);
 
   if (isClearFlagSet()) {
     p = 0.0;

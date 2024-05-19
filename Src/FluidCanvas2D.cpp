@@ -44,15 +44,15 @@ void FluidCanvas2D::initGame(Application& app) {
       {GLFW_KEY_C, GLFW_PRESS, 0},
       [&app, that = this]() { that->_simulation.clear = true; });
 
-  app.getInputManager().addMousePositionCallback(
-      [that = this, &app](double mPosX, double mPosY, bool clicked) {
-        glm::vec2 fromCenter(mPosX - 1.0, 1.0 - mPosY);
-        float d = glm::length(fromCenter);
-        that->_simulation.targetPanDir =
-            (app.getInputManager().getMouseCursorHidden() && d > 0.4f)
-                ? d * fromCenter
-                : glm::vec2(0.0f);
-      });
+  // app.getInputManager().addMousePositionCallback(
+  //     [that = this, &app](double mPosX, double mPosY, bool clicked) {
+  //       glm::vec2 fromCenter(mPosX - 1.0, 1.0 - mPosY);
+  //       float d = glm::length(fromCenter);
+  //       that->_simulation.targetPanDir =
+  //           (app.getInputManager().getMouseCursorHidden() && d > 0.4f)
+  //               ? d * fromCenter
+  //               : glm::vec2(0.0f);
+  //     });
 
   app.getInputManager().addKeyBinding(
       {GLFW_KEY_E, GLFW_PRESS, 0},
@@ -162,6 +162,8 @@ void FluidCanvas2D::draw(
 
     SimulationPushConstants push{};
     push.simUniforms = _simulation.getSimUniforms(frame).index;
+    push.params0 = app.getSwapChainExtent().width;
+    push.params1 = app.getSwapChainExtent().height;
     pass.getDrawContext().updatePushConstants(push, 0);
 
     // Draw simulation

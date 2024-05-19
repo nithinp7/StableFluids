@@ -11,18 +11,22 @@ vec2 sampleVel(vec2 uv) {
   // TODO: Parameterize grid scale / coords
   vec2 v = texture(velocityFieldTexture, uv).rg;
   vec2 sn = vec2(1.0);
-  if (uv.x < 0 || uv.x > 1.0) {
+  if (uv.x <= 0 || uv.x >= 1.0) {
     sn.x *= -1.0;
+    return vec2(0.);
   }
 
-  if (uv.y < 0 || uv.y > 1.0) {
+  if (uv.y <= 0 || uv.y >= 1.0) {
     sn.y *= -1.0;
+    return vec2(0.);
   }
 
   v *= sn;
   vec3 colorSample = texture(colorFieldTexture, uv).rgb;
   float intensity = length(colorSample);
   v.y -= 0.0001 * intensity;// / (intensity + 1.0);
+  // v.x += 0.001 * cos(3.0 * uv.x + uv.y + 5.0 * simUniforms.time);
+  // v.x += 0.0001 * cos(20.0 * simUniforms.time + uv.x * uv. y);
 
   return v;
 }
@@ -62,9 +66,9 @@ void main() {
     srcUv -= srcVel * uvScale / h * dt;
     srcVel = sampleVel(srcUv);
     // For testing...
-    if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && simUniforms.clear) {
-      srcVel += vec2(2.0, 0.0) * simUniforms.dt;
-    }
+    // if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && simUniforms.clear) {
+    //   srcVel += vec2(2.0, 0.0) * simUniforms.dt;
+    // }
   }
 
   // vec2 vel = sampleVel(texelUv);

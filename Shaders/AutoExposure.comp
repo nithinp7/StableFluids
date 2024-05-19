@@ -1,0 +1,65 @@
+#version 460
+
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+#include "SimulationCommon.glsl"
+
+#define iteration push.params0
+#define imageWidth push.params1
+#define imageHeight push.params2
+
+// work group and subgroup size are both 32
+layout(local_size_x = 32) in;
+void main() {
+  if (iteration == 0) // recovery from pessimism
+  {
+    // phase 0, reduce directly from image
+    ivec2 texelPos = ivec2(gl_GlobalInvocationID.x / imageHeight, gl_GlobalInvocationID.x % imageHeight);
+    if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
+        texelPos.y < 0 || texelPos.y >= simUniforms.height) {
+      return;
+    }
+
+    vec3 c = imageLoad(_rgba32fimageHeap[simUniforms.colorFieldImage], texelPos).rgb;
+    float cmag = length(c);
+
+    float smin = subgroupMin(cmag);
+    float smax = subgroupMax(cmag);
+    
+    if (gl_SubgroupInvocationID == 0) {
+      // getAutoExposureEntry(gl_WorkGroupID.x).minIntensity = mix(smin, getAutoExposureEntry(gl_WorkGroupID.x).minIntensity, 0.9999);
+      // getAutoExposureEntry(gl_WorkGroupID.x).maxIntensity = mix(smax, getAutoExposureEntry(gl_WorkGroupID.x).maxIntensity, 0.9999);
+
+      getAutoExposureEntry(gl_WorkGroupID.x).minIntensity = smin;
+      getAutoExposureEntry(gl_WorkGroupID.x).maxIntensity = smax;
+    }
+  }
+  else
+  {
+    // phase 1, recursively reduce the exposure buffer
+    uint spacing = uint(pow(32, iteration-1));
+
+    uint entryIdx = spacing * (gl_WorkGroupID.x + gl_LocalInvocationID.x);
+    if (entryIdx < (imageWidth * imageHeight)) {
+
+      float min = getAutoExposureEntry(entryIdx).minIntensity;
+      float max = getAutoExposureEntry(entryIdx).maxIntensity;
+      float smin = subgroupMin(min);
+      float smax = subgroupMax(max);
+
+      if (gl_SubgroupID == 0) {
+        uint dstEntryIdx = entryIdx / 32;
+        getAutoExposureEntry(dstEntryIdx).minIntensity = smin;
+        getAutoExposureEntry(dstEntryIdx).maxIntensity = smax;
+
+        if (gl_NumWorkGroups.x == 1) {
+          uint idx = (imageWidth * imageHeight - 1) / 32 + 1;
+          AutoExposure prevExposure = getAutoExposureEntry(idx);
+
+          getAutoExposureEntry(idx).minIntensity = mix(smin, prevExposure.minIntensity, 0.99);
+          getAutoExposureEntry(idx).maxIntensity = mix(smax, prevExposure.maxIntensity, 0.99);
+        }
+      }
+    }
+  }
+}

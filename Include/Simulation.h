@@ -9,6 +9,7 @@
 #include <Althea/PerFrameResources.h>
 #include <Althea/RenderPass.h>
 #include <Althea/SingleTimeCommandBuffer.h>
+#include <Althea/StructuredBuffer.h>
 #include <Althea/TransientUniforms.h>
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
@@ -67,6 +68,12 @@ struct SimulationUniforms {
   uint32_t iterationCountsImage;
 
   uint32_t colorFieldImage;
+  uint32_t autoExposureBuffer;
+};
+
+struct AutoExposure {
+  float minIntensity;
+  float maxIntensity;
 };
 
 class Simulation {
@@ -117,6 +124,8 @@ public:
   float targetZoomDir = 0.0f;
 
 private:
+  void _autoExposureBarrier(VkCommandBuffer commandBuffer);
+  
   float _lastZoom = 0.0f;
   glm::vec2 _lastOffset = glm::vec2(0.0f);
 
@@ -133,7 +142,7 @@ private:
   float _maxSpeed2D = 1.0f;
   float _maxZoomSpeed = 1.0f;
 
-  float _velocitySettleTime = 1.0f;
+  float _velocitySettleTime = 2.0f;
 
   // Simulation uniforms
   TransientUniforms<SimulationUniforms> _simulationUniforms;
@@ -168,6 +177,10 @@ private:
 
   // Udate color field
   ComputePipeline _updateColorPass;
+
+  // Auto exposure
+  ComputePipeline _autoExposurePass;
+  StructuredBuffer<AutoExposure> _autoExposureBuffer;
 
   // Particle storage buffer
   DynamicBuffer _particles{};

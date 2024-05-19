@@ -46,6 +46,7 @@ UNIFORM_BUFFER(_simulationUniforms, SimulationUniforms{
   uint iterationCountsImage;
 
   uint colorFieldImage;
+  uint autoExposureBuffer;
 });
 #define simUniforms _simulationUniforms[push.simUniforms]
 
@@ -55,6 +56,16 @@ IMAGE2D_RW(_r32fimageHeap, r32f);
 IMAGE2D_RW(_rg16fimageHeap, rg16f);
 IMAGE2D_RW(_r16fimageHeap, r16f);
 DECL_IMAGE_HEAP(uniform iimage2D _iimageHeap, r32i);
+
+struct AutoExposure {
+  float minIntensity;
+  float maxIntensity;  
+};
+
+BUFFER_RW(_autoExposureBuffer, AutoExposureBuffer{
+  AutoExposure entries[];
+});
+#define getAutoExposureEntry(idx)   _autoExposureBuffer[simUniforms.autoExposureBuffer].entries[idx]
 
 #define fractalTexture              _textureHeap[simUniforms.fractalTexture]
 #define velocityFieldTexture        _textureHeap[simUniforms.velocityFieldTexture]

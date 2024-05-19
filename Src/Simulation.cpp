@@ -1,5 +1,7 @@
 #include "Simulation.h"
 
+#include <Althea/InputMask.h>
+
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -110,7 +112,6 @@ Simulation::Simulation(
     imageOptions.usage = VK_IMAGE_USAGE_STORAGE_BIT;
     this->_advectedVelocityField.image = Image(app, imageOptions);
 
-    // TODO: Are views and samplers needed for storage-only usage?
     ImageViewOptions viewOptions{};
     viewOptions.format = VK_FORMAT_R16G16_SFLOAT;
     this->_advectedVelocityField.view =
@@ -204,6 +205,12 @@ Simulation::Simulation(
     this->_colorFieldB.registerToTextureHeap(heap);
   }
 
+  // Auto exposure
+  {
+    _autoExposureBuffer = StructuredBuffer<AutoExposure>(app, 2048 * 2048 / 32);
+    _autoExposureBuffer.registerToHeap(heap);
+  }
+
   // Create compute passes
 
   this->_fractalPass = createComputePass("/Shaders/Mandelbrot.comp", app, heap);
@@ -220,6 +227,9 @@ Simulation::Simulation(
   this->_fractalPass = createComputePass("/Shaders/Mandelbrot.comp", app, heap);
   this->_updateColorPass =
       createComputePass("/Shaders/CopyColors.comp", app, heap);
+  this->_autoExposurePass =
+      createComputePass("/Shaders/AutoExposure.comp", app, heap);
+
   // TODO:
   // Particle update pass
 }
@@ -232,9 +242,20 @@ void Simulation::update(
   // TODO: Refactor this out into generalized 2D controller
   float deltaTime = glm::clamp(frame.deltaTime, 0.0f, 1.0f / 30.0f);
 
+  uint32_t inputMask = app.getInputManager().getCurrentInputMask();
+
   // this->_targetSpeed2D =
   //     glm::clamp(this->_targetSpeed2D + this->_accelerationMag2D * deltaTime,
   //     0.0f, this->_maxSpeed2D);
+  this->targetPanDir = glm::vec2(0.0f);
+  if (inputMask & INPUT_BIT_W)
+    this->targetPanDir.y -= 1.0f;
+  if (inputMask & INPUT_BIT_S)
+    this->targetPanDir.y += 1.0f;
+  if (inputMask & INPUT_BIT_A)
+    this->targetPanDir.x -= 1.0f;
+  if (inputMask & INPUT_BIT_D)
+    this->targetPanDir.x += 1.0f;
 
   glm::vec2 targetVelocity;
   float dirMag = glm::length(this->targetPanDir);
@@ -281,7 +302,7 @@ void Simulation::update(
   uniforms.offsetY = this->offset.y;
   uniforms.lastOffsetX = this->_lastOffset.x;
   uniforms.lastOffsetY = this->_lastOffset.y;
-  uniforms.inputMask = app.getInputManager().getCurrentInputMask();
+  uniforms.inputMask = inputMask;
 
   uniforms.fractalTexture = _fractalTexture.textureHandle.index;
   uniforms.velocityFieldTexture = _velocityField.textureHandle.index;
@@ -300,6 +321,7 @@ void Simulation::update(
   uniforms.iterationCountsImage = _iterationCounts.imageHandle.index;
 
   uniforms.colorFieldImage = _colorFieldA.imageHandle.index;
+  uniforms.autoExposureBuffer = _autoExposureBuffer.getHandle().index;
 
   this->_simulationUniforms.updateUniforms(uniforms, frame);
 
@@ -330,6 +352,34 @@ void Simulation::update(
         0,
         nullptr);
   };
+
+  // Auto-exposure
+  {
+    this->_colorFieldA.image.transitionLayout(
+        commandBuffer,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+    // groupSize = subgroupSize = 32
+
+    push.params0 = 0;
+    push.params1 = extent.width;
+    push.params2 = extent.height;
+
+    for (uint32_t exposureGroupCount =
+             (extent.width * extent.height - 1) / 32 + 1;
+         exposureGroupCount >= 1;
+         exposureGroupCount >>= 5, push.params0++) {
+      bindCompute(_autoExposurePass);
+      vkCmdDispatch(commandBuffer, exposureGroupCount, 1, 1);
+      _autoExposureBarrier(commandBuffer);
+    }
+  }
+
+  push.params0 = 0;
+  push.params1 = 0;
+  push.params2 = 0;
 
   // Update fractal pass
   if (this->zoom != this->_lastZoom || this->offset != this->_lastOffset) {
@@ -512,6 +562,32 @@ void Simulation::update(
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       VK_ACCESS_SHADER_READ_BIT,
       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+  _autoExposureBarrier(commandBuffer);
+}
+
+void Simulation::_autoExposureBarrier(VkCommandBuffer commandBuffer) {
+  VkBufferMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  barrier.buffer = _autoExposureBuffer.getAllocation().getBuffer();
+  barrier.offset = 0;
+  barrier.size = _autoExposureBuffer.getSize();
+  barrier.srcAccessMask =
+      VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+  barrier.dstAccessMask =
+      VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+
+  vkCmdPipelineBarrier(
+      commandBuffer,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      0,
+      0,
+      nullptr,
+      1,
+      &barrier,
+      0,
+      nullptr);
 }
 
 void Simulation::tryRecompileShaders(Application& app) {
@@ -523,5 +599,6 @@ void Simulation::tryRecompileShaders(Application& app) {
   this->_updateVelocityPass.tryRecompile(app);
   this->_advectColorPass.tryRecompile(app);
   this->_updateColorPass.tryRecompile(app);
+  this->_autoExposurePass.tryRecompile(app);
 }
 } // namespace StableFluids
