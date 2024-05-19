@@ -15,23 +15,17 @@ void main() {
   {
     // phase 0, reduce directly from image
     ivec2 texelPos = ivec2(gl_GlobalInvocationID.x / imageHeight, gl_GlobalInvocationID.x % imageHeight);
-    if (texelPos.x < 0 || texelPos.x >= simUniforms.width ||
-        texelPos.y < 0 || texelPos.y >= simUniforms.height) {
-      return;
-    }
+    if (texelPos.x < imageWidth && texelPos.y < imageHeight) {
+      vec3 c = imageLoad(_rgba32fimageHeap[simUniforms.colorFieldImage], texelPos).rgb;
+      float cmag = length(c);
 
-    vec3 c = imageLoad(_rgba32fimageHeap[simUniforms.colorFieldImage], texelPos).rgb;
-    float cmag = length(c);
-
-    float smin = subgroupMin(cmag);
-    float smax = subgroupMax(cmag);
-    
-    if (gl_SubgroupInvocationID == 0) {
-      // getAutoExposureEntry(gl_WorkGroupID.x).minIntensity = mix(smin, getAutoExposureEntry(gl_WorkGroupID.x).minIntensity, 0.9999);
-      // getAutoExposureEntry(gl_WorkGroupID.x).maxIntensity = mix(smax, getAutoExposureEntry(gl_WorkGroupID.x).maxIntensity, 0.9999);
-
-      getAutoExposureEntry(gl_WorkGroupID.x).minIntensity = smin;
-      getAutoExposureEntry(gl_WorkGroupID.x).maxIntensity = smax;
+      float smin = subgroupMin(cmag);
+      float smax = subgroupMax(cmag);
+      
+      if (gl_SubgroupInvocationID == 0) {
+        getAutoExposureEntry(gl_WorkGroupID.x).minIntensity = smin;
+        getAutoExposureEntry(gl_WorkGroupID.x).maxIntensity = smax;
+      }
     }
   }
   else
@@ -53,7 +47,7 @@ void main() {
         getAutoExposureEntry(dstEntryIdx).maxIntensity = smax;
 
         if (gl_NumWorkGroups.x == 1) {
-          uint idx = (imageWidth * imageHeight - 1) / 32 + 1;
+          uint idx = (imageWidth * imageHeight - 1) / 32 + 2;
           AutoExposure prevExposure = getAutoExposureEntry(idx);
 
           getAutoExposureEntry(idx).minIntensity = mix(smin, prevExposure.minIntensity, 0.99);

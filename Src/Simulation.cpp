@@ -208,6 +208,7 @@ Simulation::Simulation(
   // Auto exposure
   {
     _autoExposureBuffer = StructuredBuffer<AutoExposure>(app, 2048 * 2048 / 32);
+    _autoExposureBuffer.zeroBuffer(commandBuffer);
     _autoExposureBuffer.registerToHeap(heap);
   }
 
@@ -367,13 +368,21 @@ void Simulation::update(
     push.params1 = extent.width;
     push.params2 = extent.height;
 
-    for (uint32_t exposureGroupCount =
-             (extent.width * extent.height - 1) / 32 + 1;
-         exposureGroupCount >= 1;
-         exposureGroupCount >>= 5, push.params0++) {
+    uint32_t exposureGroupCount = (extent.width * extent.height - 1) / 32 + 1;
+
+    while (true) {
       bindCompute(_autoExposurePass);
       vkCmdDispatch(commandBuffer, exposureGroupCount, 1, 1);
       _autoExposureBarrier(commandBuffer);
+
+      if (exposureGroupCount == 1)
+        break;
+      else if (exposureGroupCount < 32)
+        exposureGroupCount = 1;
+      else
+        exposureGroupCount >>= 5;
+
+      push.params0++;
     }
   }
 
@@ -579,8 +588,10 @@ void Simulation::_autoExposureBarrier(VkCommandBuffer commandBuffer) {
 
   vkCmdPipelineBarrier(
       commandBuffer,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
       0,
       0,
       nullptr,

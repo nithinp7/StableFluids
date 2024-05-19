@@ -37,23 +37,26 @@ void main() {
     bTonemap = false;
   }
 
-  AutoExposure exposure = getAutoExposureEntry((imageWidth * imageHeight - 1) / 32 + 1);
-  // AutoExposure exposure = getAutoExposureEntry(imageWidth);
+  AutoExposure exposure = getAutoExposureEntry((imageWidth * imageHeight - 1) / 32 + 2);
   if (bool(simUniforms.inputMask & INPUT_BIT_R)) {
-    // float maxIntensity = getAutoExposureEntry(0).maxIntensity;
     color.rgb = vec3(exposure.maxIntensity);
+  }
+
+  if (isnan(exposure.maxIntensity)) {
+    color.rgb = vec3(1.0, 0.0, 0.0);
+    return;
   }
 
   if (bTonemap)
   {
     // TODO: color-grade?
     float clipTop = exposure.maxIntensity;
-    // float clipBottom = exposure.minIntensity;
-    float clipBottom = 0.85 * exposure.minIntensity;
+    float clipBottom = 0.;//exposure.minIntensity;
+    // float clipBottom = 0.85 * exposure.minIntensity;
 
     // exposure.minIntensity = clamp(exposure.minIntensity, 0, 1);
     color.rgb -= vec3(clipBottom);
-    color.rgb /= 0.1 * (clipTop - clipBottom);
+    color.rgb /= 0.12 * (clipTop - clipBottom);
     // color.rgb /= (clipTop - clipBottom);
 
     color.rgb = vec3(1.0) - exp(-color.rgb);
