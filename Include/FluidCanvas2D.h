@@ -23,6 +23,7 @@
 #include <Althea/TransientUniforms.h>
 #include <glm/glm.hpp>
 
+#include <array>
 #include <vector>
 
 using namespace AltheaEngine;
@@ -32,31 +33,6 @@ class Application;
 } // namespace AltheaEngine
 
 namespace StableFluids {
-
-struct GlobalUniforms {
-  float time;
-};
-
-struct SimResources {
-  // Velocity advection pass
-  ImageResource velocityField{};
-  ImageResource advectedVelocityField{};
-  ComputePipeline _advectPass;
-
-  // Divergence calculation pass
-  ImageResource divergenceField{};
-  ComputePipeline _divergencePass;
-
-  // Pressure calculation pass
-  // Ping-pong buffers for pressure computation
-  ImageResource pressureFieldA{};
-  ImageResource pressureFieldB{};
-  ComputePipeline _pressurePass;
-
-  // Velocity update pass
-  ComputePipeline _updateVelocityPass;
-};
-
 class FluidCanvas2D : public IGameInstance {
 public:
   FluidCanvas2D();
@@ -78,6 +54,8 @@ private:
   GlobalHeap _heap;
 
   Simulation _simulation;
+  ImageResource _hdrImage;
+  std::array<BufferAllocation, MAX_FRAMES_IN_FLIGHT> _hdrStagingBuffers;
   
   RenderPass _renderPass;
   SwapChainFrameBufferCollection _swapChainFrameBuffers;
