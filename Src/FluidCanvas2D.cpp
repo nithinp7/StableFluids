@@ -22,6 +22,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 using namespace AltheaEngine;
@@ -236,17 +237,23 @@ void FluidCanvas2D::draw(
 
     app.addDeletiontask(DeletionTask{
         [pStaging, extent, n = frameNum]() {
-          std::string path = GProjectDirectory + "/HdrCaptures/0/" +
-                             std::to_string(n) + ".hdr";
-          void* p = pStaging->mapMemory();
-          Utilities::saveHdri(
-              path,
-              extent.width,
-              extent.height,
-              gsl::span(
-                  reinterpret_cast<const std::byte*>(p),
-                  sizeof(glm::vec4) * extent.width * extent.height));
+          size_t bufSize = 4 * sizeof(float) * extent.width * extent.height;
+          std::byte* pBuf = (std::byte*)malloc(bufSize);
+
+          void* pSrc = pStaging->mapMemory();
+          memcpy(pBuf, pSrc, bufSize);
           pStaging->unmapMemory();
+
+          std::thread([pBuf, bufSize, extent, n]() {
+            std::string path = GProjectDirectory + "/HdrCaptures/0/" +
+                               std::to_string(n) + ".exr";
+            Utilities::saveExr(
+                path,
+                extent.width,
+                extent.height,
+                gsl::span(pBuf, bufSize));
+            delete pBuf;
+          }).detach();
         },
         frame.frameRingBufferIndex});
 

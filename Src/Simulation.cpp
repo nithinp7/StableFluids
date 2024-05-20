@@ -292,7 +292,7 @@ void Simulation::update(
   uniforms.width = static_cast<int>(extent.width);
   uniforms.height = static_cast<int>(extent.height);
   uniforms.time = static_cast<float>(frame.currentTime);
-  uniforms.dt = frame.deltaTime;
+  uniforms.dt = 1.0f / 30.0f;
   uniforms.sorOmega = 1.f;
   uniforms.density = 0.5f;
   uniforms.vorticity = 0.5f;

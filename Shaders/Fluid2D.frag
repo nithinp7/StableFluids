@@ -14,48 +14,57 @@ void main() {
   vec2 vel = texture(velocityFieldTexture, screenUV).rg;
   float pres = texture(pressureFieldTexture, screenUV).r;
   float f = texture(fractalTexture, screenUV).r;
-  float f2 = 100.0 * f * f;
+  float f2 = f * f;//100.0 * f * f;
 
   // By default show color field
   bool bTonemap = true;
   vec3 color = texture(colorFieldTexture, screenUV).rgb;
 
-  // Show velocity
-  if (bool(simUniforms.inputMask & INPUT_BIT_V)) {
-    color = vec3(length(vel));
-    bTonemap = false;
-  }
+  if (screenUV.x < 0.5)
+  {
+    // Show velocity
+    if (bool(simUniforms.inputMask & INPUT_BIT_V)) {
+      color = vec3(length(vel));
+      bTonemap = false;
+    }
 
-  // Show fractal
-  if (bool(simUniforms.inputMask & INPUT_BIT_F)) {
-    color = vec3(f2);
-    bTonemap = false;
-  }
+    // Show fractal
+    if (bool(simUniforms.inputMask & INPUT_BIT_F)) {
+      color = vec3(f2);
+      bTonemap = false;
+    }
 
-  // Show pressure
-  if (bool(simUniforms.inputMask & INPUT_BIT_P)) {
-    color = vec3(100. * abs(pres));
-    bTonemap = false;
+    // Show pressure
+    if (bool(simUniforms.inputMask & INPUT_BIT_P)) {
+      color = vec3(100. * abs(pres));
+      bTonemap = false;
+    }
   }
 
   AutoExposure exposure = getAutoExposureEntry((imageWidth * imageHeight - 1) / 32 + 2);
-  if (bool(simUniforms.inputMask & INPUT_BIT_R)) {
-    color = vec3(exposure.maxIntensity);
-  }
 
   if (bTonemap)
   {
     // TODO: color-grade?
-    float clipTop = exposure.maxIntensity;
-    float clipBottom = 0.;//exposure.minIntensity;
-    // float clipBottom = 0.85 * exposure.minIntensity;
+    float top = exposure.maxIntensity;
+    float bottom = exposure.minIntensity;
 
-    // exposure.minIntensity = clamp(exposure.minIntensity, 0, 1);
-    color -= vec3(clipBottom);
-    color /= 0.12 * (clipTop - clipBottom);
-    // color.rgb /= (clipTop - clipBottom);
+    float rangeCenter = 0.5 * top + 0.5 * bottom;
+    float range = clamp(top - bottom, 0.0, 500  );
+    // float clipBottom = 0.85 * exposure.minIntensity;
+    float clipTop = rangeCenter + 0.5 * range;
+    float clipBottom = rangeCenter - 0.5 * range;
+
+    clipTop = top;
+    clipBottom = bottom;
 
     outHdrColor = vec4(color, 1.0);
+    // exposure.minIntensity = clamp(exposure.minIntensity, 0, 1);
+    color -= vec3(clipBottom);
+    color /= 0.1 * (clipTop - clipBottom);
+    // color.rgb /= 0.4 * (clipTop - clipBottom);
+
+    // outHdrColor = vec4(color, 1.0);
 
     color = vec3(1.0) - exp(-color.rgb);
     // color.rgb = vec3(1.0) - exp(-color.rgb * 0.5);

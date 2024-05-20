@@ -20,7 +20,7 @@ void main() {
       - vec2(1.0)) / simUniforms.zoom
       + simUniforms.offset;
 
-  const int FRACTAL_ITERS = 10000;
+  const int FRACTAL_ITERS = 1000;
   int i = 0;
   vec2 zn = c;
   float magSq;

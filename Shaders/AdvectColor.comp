@@ -8,43 +8,28 @@ layout(local_size_x = 16, local_size_y = 16) in;
 
 vec2 sampleVel(vec2 uv) {
   vec2 v = texture(velocityFieldTexture, uv).rg;
-  vec2 sn = vec2(1.0);
-  if (uv.x <= 0 || uv.x >= 1.0) {
-    sn.x *= -1.0;
+  if (uv.x < 0 || uv.x > 1.0) {
     return vec2(0.);
   }
 
-  if (uv.y <= 0 || uv.y >= 1.0) {
-    sn.y *= -1.0;
+  if (uv.y < 0 || uv.y > 1.0) {
     return vec2(0.);
   }
 
-  return sn * v;
+  return v;
 }
 
 vec2 duv = vec2(0.0);
 
 vec3 sampleColor(vec2 uv) {
   float f = 1.0 * texture(fractalTexture, uv + duv).r;
-  float f2 = 100.0 * f;// * f;//100.0 * f * f;// * f;
+  float f2 = 5. * f;//100.0 * f;// * f;//100.0 * f * f;// * f;
   vec3 color = f2 * vec3(cos(5.0 * f + 1.0), sin(5.0 * f + 1.0), sin(5.0 * f + 0.45)) + vec3(1.01 * f2);
-  color.rgb = color.brg;
-  color.r *= 1.5;
+  // color.rgb = color.brg;
+  color *= color.r;// * 0.5;
+  // color.r *= 1.5;
   color.g *= 1.2;
-  // color.g *= 1.5;
-  // if (length(g) > 0.999999) {
-    // Un-gamma correct
-    // txSample /= (vec3(1.0) - txSample);
-    // txSample += 0.01 * vec3(cos(10.0 * f), sin(23. * f), f);
-    // Gamma correct
-    // txSample /= (vec3(1.0) + txSample);
-  // } else {
-  //   txSample -= vec3(f);
-  // }
-
-
-  // vec3 txSample = texture(colorFieldTexture, uv).rgb;
-  // return mix(color, txSample, 0.95);
+  
   return color;
 }
 vec2 colorGrad2(vec2 uv, vec2 cellDims, float h) {
@@ -92,13 +77,13 @@ void main() {
   texelUv.x = clamp(texelUv.x, 0.0, 1.0);
   texelUv.y = clamp(texelUv.y, 0.0, 1.0);
   
-  const int COLOR_ADV_STEPS = 12;
+  const int COLOR_ADV_STEPS = 1;
   float dt = simUniforms.dt / float(COLOR_ADV_STEPS);
-
+  vec2 vel;
   // Integrate backwards through velocity field
   for (int i = 0; i < COLOR_ADV_STEPS; ++i) {
     vec2 colGradMag = colorGrad(texelUv, cellDims, h);
-    vec2 vel = sampleVel(texelUv);
+    vel = sampleVel(texelUv);
     // // Reject the portion of the velocity along the color gradient
     // vel -= vel * min(dot(vel, colGradMag), 0.0);
     texelUv -= vel * cellDims / h * dt;
@@ -109,7 +94,7 @@ void main() {
 
   vec3 txSample = texture(colorFieldTexture, texelUv).rgb;
 
-  float t = 0.99;
+  float t = 0.99;//length(vel);//0.99;
   if (texelUv.x <= 0 || texelUv.x >= 1.0 ||
       texelUv.y <= 0 || texelUv.y >= 1.0) {
     t = 0.5;

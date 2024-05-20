@@ -23,6 +23,7 @@ vec2 sampleVel(vec2 uv) {
 
   v *= sn;
   vec3 colorSample = texture(colorFieldTexture, uv).rgb;
+  // float intensity = colorSample.r + 0.1 * colorSample.b;//length(colorSample);
   float intensity = length(colorSample);
   v.y -= 0.0001 * intensity;// / (intensity + 1.0);
   // v.x += 0.001 * cos(3.0 * uv.x + uv.y + 5.0 * simUniforms.time);
@@ -65,10 +66,6 @@ void main() {
   for (int i = 0; i < ADV_STEPS; ++i) {
     srcUv -= srcVel * uvScale / h * dt;
     srcVel = sampleVel(srcUv);
-    // For testing...
-    // if (srcUv.x <= 0.01 && srcUv.y > 0.45 && srcUv.y < 0.55) {// && simUniforms.clear) {
-    //   srcVel += vec2(2.0, 0.0) * simUniforms.dt;
-    // }
   }
 
   // vec2 vel = sampleVel(texelUv);
