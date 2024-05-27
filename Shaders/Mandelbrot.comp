@@ -13,19 +13,19 @@ void main() {
     return;
   }
   
-  float h = max(1.0 / simUniforms.width, 1.0 / simUniforms.height);
+  double h = max(1.0 / simUniforms.width, 1.0 / simUniforms.height);
 
-  vec2 c = (
-      2.0 * vec2(texelPos) * h 
-      - vec2(1.0)) / simUniforms.zoom
-      + simUniforms.offset;
+  dvec2 c = (
+      2.0 * dvec2(texelPos) * h 
+      - dvec2(1.0)) / simUniforms.zoom
+      + dvec2(simUniforms.offset);
 
   const int FRACTAL_ITERS = 1000;
   int i = 0;
-  vec2 zn = c;
-  float magSq;
+  dvec2 zn = c;
+  double magSq;
   for (; i < FRACTAL_ITERS; ++i) {
-    vec2 z2 = vec2(zn.x * zn.x - zn.y * zn.y, 2.0 * zn.x * zn.y);
+    dvec2 z2 = dvec2(zn.x * zn.x - zn.y * zn.y, 2.0 * zn.x * zn.y);
     zn = z2 + c;
     magSq = dot(zn, zn);
     if (magSq > 4.0) {
@@ -33,14 +33,14 @@ void main() {
     }
   }
 
-  float mag = sqrt(magSq);
+  float mag = float(sqrt(magSq));
   if (i == FRACTAL_ITERS)
   {
     i = 0;
     mag = 0.0;
   }
 
-  float color1 = float(i + 1) / float(FRACTAL_ITERS);
+  // float color1 = float(i + 1) / float(FRACTAL_ITERS);
   // float color2 = (float(i + 1) - log(max(log2(max(mag, 1.000)), 1.000))) / float(FRACTAL_ITERS);
   float color2 = (float(i + 1) - log(max(log2(mag), 0.01))) / float(FRACTAL_ITERS);
   float color = color2;//(1.0 - color2) * (1.0 - mod(float(i), 10.0));

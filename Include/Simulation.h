@@ -32,13 +32,13 @@ struct SimulationPushConstants {
 };
 
 struct SimulationUniforms {
-  float offsetX;
-  float offsetY;
-  float lastOffsetX;
-  float lastOffsetY;
+  double offsetX;
+  double offsetY;
+  double lastOffsetX;
+  double lastOffsetY;
 
-  float zoom;
-  float lastZoom;
+  double zoom;
+  double lastZoom;
   int width;
   int height;
 
@@ -118,16 +118,16 @@ public:
   }
   
   bool clear = true;
-  float zoom = 1.0f;
-  glm::vec2 offset = glm::vec2(-0.706835, 0.235839);
+  double zoom = 1.0f;
+  glm::dvec2 offset = glm::dvec2(-0.706835, 0.235839);
   glm::vec2 targetPanDir = glm::vec2(0.0f);
   float targetZoomDir = 0.0f;
 
 private:
   void _autoExposureBarrier(VkCommandBuffer commandBuffer);
   
-  float _lastZoom = 0.0f;
-  glm::vec2 _lastOffset = glm::vec2(0.0f);
+  double _lastZoom = 0.0f;
+  glm::dvec2 _lastOffset = glm::dvec2(0.0f);
 
   glm::vec2 _velocity2D = glm::vec2(0.0f);
   float _velocityZoom = 0.0f;

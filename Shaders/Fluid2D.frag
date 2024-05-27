@@ -13,6 +13,7 @@ layout(location=1) out vec4 outHdrColor;
 void main() {
   vec2 vel = texture(velocityFieldTexture, screenUV).rg;
   float pres = texture(pressureFieldTexture, screenUV).r;
+  float div = texture(divergenceFieldTexture, screenUV).r;
   float f = texture(fractalTexture, screenUV).r;
   float f2 = f * f;//100.0 * f * f;
 
@@ -20,7 +21,7 @@ void main() {
   bool bTonemap = true;
   vec3 color = texture(colorFieldTexture, screenUV).rgb;
 
-  if (screenUV.x < 0.5)
+  //if (screenUV.x < 0.5)
   {
     // Show velocity
     if (bool(simUniforms.inputMask & INPUT_BIT_V)) {
@@ -36,7 +37,13 @@ void main() {
 
     // Show pressure
     if (bool(simUniforms.inputMask & INPUT_BIT_P)) {
-      color = vec3(100. * abs(pres));
+      color = vec3(1000. * abs(pres));
+      bTonemap = false;
+    }
+
+    // Show divergence
+    if (bool(simUniforms.inputMask & INPUT_BIT_B)) {
+      color = vec3(1. * abs(div));
       bTonemap = false;
     }
   }

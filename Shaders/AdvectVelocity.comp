@@ -11,12 +11,12 @@ vec2 sampleVel(vec2 uv) {
   // TODO: Parameterize grid scale / coords
   vec2 v = texture(velocityFieldTexture, uv).rg;
   vec2 sn = vec2(1.0);
-  if (uv.x <= 0 || uv.x >= 1.0) {
+  if (uv.x < 0 || uv.x > 1.0) {
     sn.x *= -1.0;
     return vec2(0.);
   }
 
-  if (uv.y <= 0 || uv.y >= 1.0) {
+  if (uv.y < 0 || uv.y > 1.0) {
     sn.y *= -1.0;
     return vec2(0.);
   }
@@ -44,9 +44,8 @@ void main() {
 
   vec2 texelPosf = vec2(texelPos) + vec2(0.5);
   if (simUniforms.lastOffset != simUniforms.offset || simUniforms.lastZoom != simUniforms.zoom) {
-    // TODO: Handle zoom change as well...
-    vec2 c = (2.0 * texelPosf * h - vec2(1.0)) / simUniforms.zoom + simUniforms.offset;
-    texelPosf = (simUniforms.lastZoom * (c - simUniforms.lastOffset) + vec2(1.0)) / 2.0 / h;
+    dvec2 c = (2.0 * texelPosf * h - dvec2(1.0)) / simUniforms.zoom + simUniforms.offset;
+    texelPosf = vec2((simUniforms.lastZoom * (c - simUniforms.lastOffset) + dvec2(1.0)) / 2.0 / h);
   }
 
   vec2 texelUv = texelPosf * uvScale;

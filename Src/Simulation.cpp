@@ -284,7 +284,7 @@ void Simulation::update(
   this->_velocityZoom += zoomAcceleration * deltaTime;
 
   this->zoom *= glm::pow(2.0, this->_velocityZoom * deltaTime);
-  this->offset += this->_velocity2D / this->zoom * deltaTime;
+  this->offset += glm::dvec2(this->_velocity2D) / this->zoom * (double)deltaTime;
 
   const VkExtent2D& extent = app.getSwapChainExtent();
 

@@ -66,8 +66,8 @@ void main() {
   vec2 oldTexelPosf = texelPosf;
   if (simUniforms.lastOffset != simUniforms.offset || simUniforms.lastZoom != simUniforms.zoom) {
     // TODO: Handle zoom change as well...
-    vec2 c = (2.0 * texelPosf * h - vec2(1.0)) / simUniforms.zoom + simUniforms.offset;
-    oldTexelPosf = (simUniforms.lastZoom * (c - simUniforms.lastOffset) + vec2(1.0)) / 2.0 / h;
+    dvec2 c = (2.0 * texelPosf * h - dvec2(1.0)) / simUniforms.zoom + simUniforms.offset;
+    oldTexelPosf = vec2((simUniforms.lastZoom * (c - simUniforms.lastOffset) + dvec2(1.0)) / 2.0 / h);
   }
 
   // Advect color dye
@@ -94,7 +94,8 @@ void main() {
 
   vec3 txSample = texture(colorFieldTexture, texelUv).rgb;
 
-  float t = 0.99;//length(vel);//0.99;
+  float t = 0.95;//0.9;//length(vel);//0.99;
+  // float t = 0.99;//length(vel);//0.99;
   if (texelUv.x <= 0 || texelUv.x >= 1.0 ||
       texelUv.y <= 0 || texelUv.y >= 1.0) {
     t = 0.5;

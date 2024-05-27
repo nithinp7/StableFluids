@@ -12,11 +12,11 @@ layout(push_constant) uniform PushConstant {
 } push;
 
 UNIFORM_BUFFER(_simulationUniforms, SimulationUniforms{
-  vec2 offset;
-  vec2 lastOffset;
+  dvec2 offset;
+  dvec2 lastOffset;
 
-  float zoom;
-  float lastZoom;
+  double zoom;
+  double lastZoom;
   int width;
   int height;
   
